@@ -4,13 +4,20 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace SiJabarApp
 {
+    [BsonIgnoreExtraElements]
     public class ChatLog
     {
         [BsonId]
-        public ObjectId Id { get; set; }
-        public string Role { get; set; }
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string Id { get; set; }
+
+        [BsonElement("role")]
+        public string Role { get; set; } // Menyimpan "user" atau "bot"
+
+        [BsonElement("message")]
         public string Message { get; set; }
+
+        [BsonElement("timestamp")]
         public DateTime Timestamp { get; set; }
-        public string ModelUsed { get; set; } // Properti baru ditambahkan di sini
     }
 }

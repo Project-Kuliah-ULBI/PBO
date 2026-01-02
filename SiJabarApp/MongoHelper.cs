@@ -9,12 +9,24 @@ namespace SiJabarApp
     public class MongoHelper
     {
         private IMongoCollection<User> usersCollection;
+        // String koneksi MongoDB Atlas Anda
+        private readonly string connectionString = "mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB";
+        private readonly string databaseName = "SiJabarDB";
 
         public MongoHelper()
         {
-            var client = new MongoClient("mongodb://127.0.0.1:27017");
-            var database = client.GetDatabase("SiJabarDB");
-            usersCollection = database.GetCollection<User>("Users");
+            try
+            {
+                // Inisialisasi client dengan koneksi Atlas
+                var client = new MongoClient(connectionString);
+                var database = client.GetDatabase(databaseName);
+                usersCollection = database.GetCollection<User>("Users");
+            }
+            catch (Exception ex)
+            {
+                // Log error jika inisialisasi gagal
+                System.Diagnostics.Debug.WriteLine("Gagal inisialisasi MongoDB Atlas: " + ex.Message);
+            }
         }
 
         public bool RegisterUser(string name, string email, string password, out string message)
@@ -33,10 +45,10 @@ namespace SiJabarApp
                     return false;
                 }
 
-                // 3. Hash Password
+                // 3. Hash Password menggunakan BCrypt
                 string passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
 
-                // 4. Simpan
+                // 4. Simpan User Baru
                 var newUser = new User
                 {
                     Fullname = name,
@@ -50,12 +62,11 @@ namespace SiJabarApp
             }
             catch (Exception ex)
             {
-                message = "Gagal terhubung ke Database! Error: " + ex.Message;
+                message = "Gagal terhubung ke Database Atlas! Error: " + ex.Message;
                 return false;
             }
         }
 
-        // Tambahkan parameter "out string userId"
         public bool LoginUser(string email, string password, out string message, out string userName, out string userId)
         {
             userName = "";
@@ -71,12 +82,13 @@ namespace SiJabarApp
                     return false;
                 }
 
+                // Verifikasi password yang di-hash
                 bool validPassword = BCrypt.Net.BCrypt.Verify(password, user.Password);
 
                 if (validPassword)
                 {
                     userName = user.Fullname;
-                    userId = user.Id; // AMBIL ID USER DI SINI
+                    userId = user.Id; // Mengambil ID User
                     message = "Login Berhasil!";
                     return true;
                 }

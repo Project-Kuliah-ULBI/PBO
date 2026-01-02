@@ -299,13 +299,6 @@ namespace SiJabarApp
                 // Buat instance baru
                 chatbotPopup = new Chatbot();
 
-                // --- ATUR POSISI POP-UP (MENIMPA MAINFORM) ---
-
-                // Opsi A: Muncul di Tengah-Tengah MainForm
-                //int x = this.Location.X + (this.Width - chatbotPopup.Width) / 2;
-                //int y = this.Location.Y + (this.Height - chatbotPopup.Height) / 2;
-
-                // Opsi B (Alternatif): Muncul di Pojok Kanan Bawah MainForm (seperti widget chat umumnya)
                 int x = this.Location.X + this.Width - chatbotPopup.Width - 20; // 20px padding dari kanan
                 int y = this.Location.Y + this.Height - chatbotPopup.Height - 20; // 20px padding dari bawah
 
@@ -352,7 +345,7 @@ namespace SiJabarApp
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
 
-        public string UserId { get; set; } // PENANDA PEMILIK DATA
+        public string UserId { get; set; }
 
         public string Wilayah { get; set; }
         public string Jenis { get; set; }

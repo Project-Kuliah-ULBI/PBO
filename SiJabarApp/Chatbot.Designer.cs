@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Chatbot));
             SuspendLayout();
             // 
             // Chatbot
@@ -35,6 +36,7 @@
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1262, 673);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "Chatbot";
             Text = "Chatbot";
             ResumeLayout(false);

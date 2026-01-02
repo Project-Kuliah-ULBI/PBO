@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInput));
             panelHeader = new Panel();
             btnClose = new FontAwesome.Sharp.IconButton();
             lblHeaderTitle = new Label();
@@ -225,6 +226,7 @@
             Font = new Font("Segoe UI", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
             ForeColor = Color.Black;
             FormBorderStyle = FormBorderStyle.None;
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Name = "FormInput";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "FormInput";
