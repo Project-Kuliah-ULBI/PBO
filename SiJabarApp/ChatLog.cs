@@ -11,8 +11,11 @@ namespace SiJabarApp
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
 
+        [BsonElement("userId")] // Field baru untuk memisahkan history
+        public string UserId { get; set; }
+
         [BsonElement("role")]
-        public string Role { get; set; } // Menyimpan "user" atau "bot"
+        public string Role { get; set; } // "user" atau "bot"
 
         [BsonElement("message")]
         public string Message { get; set; }

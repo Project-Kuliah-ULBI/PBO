@@ -28,7 +28,7 @@ namespace SiJabarApp
         // --- VARIABEL SESI USER (PENTING) ---
         private string activeUserId;
         private string activeUserName;
-
+        public string currentUserId; // Set nilai ini saat login berhasil
 
         private Chatbot chatbotPopup;
 
@@ -293,35 +293,22 @@ namespace SiJabarApp
         private void btnDataSampah_Click(object sender, EventArgs e) => LoadData();
         private void btnChatbot_Click(object sender, EventArgs e)
         {
-            // Cek apakah chatbot belum dibuat atau sudah ditutup (disposed)
             if (chatbotPopup == null || chatbotPopup.IsDisposed)
             {
-                // Buat instance baru
-                chatbotPopup = new Chatbot();
+                // PERBAIKAN: Kirim activeUserId ke constructor Chatbot
+                chatbotPopup = new Chatbot(activeUserId);
 
-                int x = this.Location.X + this.Width - chatbotPopup.Width - 20; // 20px padding dari kanan
-                int y = this.Location.Y + this.Height - chatbotPopup.Height - 20; // 20px padding dari bawah
-
+                int x = this.Location.X + this.Width - chatbotPopup.Width - 20;
+                int y = this.Location.Y + this.Height - chatbotPopup.Height - 20;
                 chatbotPopup.StartPosition = FormStartPosition.Manual;
                 chatbotPopup.Location = new Point(x, y);
-
-                // Pastikan Chatbot selalu di atas MainForm (Owner)
-                // Ini penting agar saat klik MainForm, Chatbot tidak hilang ke belakang
                 chatbotPopup.Owner = this;
-
                 chatbotPopup.Show();
             }
             else
             {
-                if (chatbotPopup.Visible)
-                {
-                    chatbotPopup.Close();
-                }
-                else
-                {
-                    chatbotPopup.Show();
-                    chatbotPopup.BringToFront();
-                }
+                if (chatbotPopup.Visible) chatbotPopup.Hide();
+                else { chatbotPopup.Show(); chatbotPopup.BringToFront(); }
             }
         }
 

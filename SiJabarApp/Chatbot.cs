@@ -17,9 +17,9 @@ namespace SiJabarApp
         private static readonly HttpClient client = new HttpClient();
         private IMongoCollection<ChatLog> _chatCollection;
         private string _apiKey = "iWEbEkPNiwBcb7c6KTFxbs2Mz5hbznNA";
-        private string _selectedModel = "mistral-tiny"; // Variabel penyimpan model aktif
+        private string _selectedModel = "mistral-tiny";
+        private string _currentUserId; // Menyimpan ID user yang login
 
-        // UI Colors
         private Color colorUser = Color.FromArgb(220, 248, 198);
         private Color colorBot = Color.FromArgb(245, 245, 245);
 
@@ -30,8 +30,10 @@ namespace SiJabarApp
         private TextBox txtInput;
         private ComboBox cmbModel;
 
-        public Chatbot()
+        // PERBAIKAN: Tambahkan parameter userId di constructor
+        public Chatbot(string userId)
         {
+            this._currentUserId = userId;
             this.FormBorderStyle = FormBorderStyle.None;
             this.Size = new Size(480, 600);
             this.BackColor = Color.White;
@@ -58,21 +60,20 @@ namespace SiJabarApp
 
         private void InitUI()
         {
-            // Header
             Panel header = new Panel { Dock = DockStyle.Top, Height = 65, BackColor = Color.FromArgb(39, 174, 96) };
             header.MouseDown += (s, e) => { ReleaseCapture(); SendMessage(Handle, 0xA1, 0x2, 0); };
 
             Label title = new Label { Text = "SiJabar Assistant 🤖", ForeColor = Color.White, Font = new Font("Segoe UI", 12, FontStyle.Bold), Location = new Point(15, 20), AutoSize = true };
 
-            // Tombol Clear (Paling Kanan)
+            // PERBAIKAN: Hanya hapus chat milik user yang login
             Button btnClear = new Button { Text = "🗑", FlatStyle = FlatStyle.Flat, ForeColor = Color.White, Size = new Size(35, 35), Location = new Point(430, 15), Cursor = Cursors.Hand };
             btnClear.FlatAppearance.BorderSize = 0;
             btnClear.Click += async (s, e) => {
-                if (_chatCollection != null) await _chatCollection.DeleteManyAsync(_ => true);
+                if (_chatCollection != null)
+                    await _chatCollection.DeleteManyAsync(c => c.UserId == _currentUserId);
                 chatPanel.Controls.Clear();
             };
 
-            // Dropdown Model (Disebelah kiri ikon Clear)
             cmbModel = new ComboBox
             {
                 Location = new Point(285, 20),
@@ -83,22 +84,16 @@ namespace SiJabarApp
                 FlatStyle = FlatStyle.Flat
             };
             cmbModel.Items.AddRange(new object[] { "mistral-tiny", "mistral-small", "mistral-medium" });
-            cmbModel.SelectedIndex = 0; // Set default ke mistral-tiny
+            cmbModel.SelectedIndex = 0;
             cmbModel.SelectedIndexChanged += (s, e) => { _selectedModel = cmbModel.SelectedItem.ToString(); };
 
             header.Controls.AddRange(new Control[] { title, btnClear, cmbModel });
             this.Controls.Add(header);
 
-            // Input Area
             Panel pnlInput = new Panel { Dock = DockStyle.Bottom, Height = 80, BackColor = Color.FromArgb(240, 240, 240), Padding = new Padding(10) };
-
             txtInput = new TextBox { Width = 380, Font = new Font("Segoe UI", 11), BorderStyle = BorderStyle.FixedSingle, Location = new Point(15, 25) };
             txtInput.KeyDown += (s, e) => {
-                if (e.KeyCode == Keys.Enter)
-                {
-                    SendAction();
-                    e.SuppressKeyPress = true; // Menghilangkan bunyi 'ding' Windows
-                }
+                if (e.KeyCode == Keys.Enter) { SendAction(); e.SuppressKeyPress = true; }
             };
 
             Button btnSend = new Button { Text = "➤", BackColor = Color.FromArgb(39, 174, 96), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, Size = new Size(45, 45), Location = new Point(410, 15), Cursor = Cursors.Hand };
@@ -107,7 +102,6 @@ namespace SiJabarApp
             pnlInput.Controls.AddRange(new Control[] { txtInput, btnSend });
             this.Controls.Add(pnlInput);
 
-            // Chat Flow
             chatPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoScroll = true, WrapContents = false, FlowDirection = FlowDirection.TopDown, Padding = new Padding(10) };
             this.Controls.Add(chatPanel);
             chatPanel.BringToFront();
@@ -116,7 +110,11 @@ namespace SiJabarApp
         private async Task LoadHistory()
         {
             if (_chatCollection == null) return;
-            var logs = await _chatCollection.Find(_ => true).SortBy(x => x.Timestamp).ToListAsync();
+            // PERBAIKAN: Filter history berdasarkan UserId yang sedang aktif
+            var logs = await _chatCollection.Find(c => c.UserId == _currentUserId)
+                                           .SortBy(x => x.Timestamp)
+                                           .ToListAsync();
+
             foreach (var log in logs) AddBubble(log.Message, log.Role == "user");
             ScrollBottom();
         }
@@ -141,9 +139,7 @@ namespace SiJabarApp
 
         private async Task<string> GetAIResponse(string msg)
         {
-            // Mengirim payload menggunakan model yang dipilih dari ComboBox
             var payload = new { model = _selectedModel, messages = new[] { new { role = "user", content = msg } } };
-
             if (!client.DefaultRequestHeaders.Contains("Authorization"))
                 client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
 
@@ -152,13 +148,19 @@ namespace SiJabarApp
             return data.choices[0].message.content;
         }
 
+        // PERBAIKAN: Simpan pesan beserta UserId pengirimnya
         private async Task SaveMsg(string role, string msg) =>
-            await _chatCollection.InsertOneAsync(new ChatLog { Role = role, Message = msg, Timestamp = DateTime.UtcNow });
+            await _chatCollection.InsertOneAsync(new ChatLog
+            {
+                UserId = _currentUserId,
+                Role = role,
+                Message = msg,
+                Timestamp = DateTime.UtcNow
+            });
 
         private void AddBubble(string text, bool isUser)
         {
             Panel row = new Panel { Width = chatPanel.ClientSize.Width - 30, AutoSize = true, Padding = new Padding(0, 5, 0, 5) };
-
             Label lbl = new Label
             {
                 Text = text,
@@ -168,11 +170,8 @@ namespace SiJabarApp
                 MaximumSize = new Size(300, 0),
                 AutoSize = true
             };
-
             row.Controls.Add(lbl);
-            // Penyesuaian lokasi bubble: Kanan untuk user, Kiri untuk bot
             lbl.Location = isUser ? new Point(row.Width - lbl.PreferredWidth - 10, 0) : new Point(10, 0);
-
             chatPanel.Controls.Add(row);
             ScrollBottom();
         }
