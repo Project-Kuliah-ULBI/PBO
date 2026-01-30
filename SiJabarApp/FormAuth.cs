@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Text.RegularExpressions;
 using MongoDB.Driver;
+using SiJabarApp.helper;
 
 namespace SiJabarApp
 {

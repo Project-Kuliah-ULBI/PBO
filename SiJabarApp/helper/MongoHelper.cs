@@ -1,16 +1,18 @@
 ﻿using Microsoft.VisualBasic.ApplicationServices;
 using MongoDB.Driver;
 using Org.BouncyCastle.Crypto.Generators;
+using SiJabarApp.model;
 using System;
 using System.Linq;
 
-namespace SiJabarApp
+namespace SiJabarApp.helper
 {
     public class MongoHelper
     {
-        private IMongoCollection<User> usersCollection;
+        private IMongoCollection<model.User> usersCollection;
         // String koneksi MongoDB Atlas Anda
-        private readonly string connectionString = "mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB";
+        // private readonly string connectionString = "mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB";
+        private readonly string connectionString = "mongodb://localhost:27017";
         private readonly string databaseName = "SiJabarDB";
 
         public MongoHelper()
@@ -20,7 +22,7 @@ namespace SiJabarApp
                 // Inisialisasi client dengan koneksi Atlas
                 var client = new MongoClient(connectionString);
                 var database = client.GetDatabase(databaseName);
-                usersCollection = database.GetCollection<User>("Users");
+                usersCollection = database.GetCollection<model.User>("Users");
             }
             catch (Exception ex)
             {
@@ -49,7 +51,7 @@ namespace SiJabarApp
                 string passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
 
                 // 4. Simpan User Baru
-                var newUser = new User
+                var newUser = new model.User
                 {
                     Fullname = name,
                     Email = cleanEmail, // Simpan yang sudah lowercase

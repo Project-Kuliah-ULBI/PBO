@@ -184,7 +184,7 @@
             btnSimpan.Text = "SIMPAN";
             btnSimpan.TextImageRelation = TextImageRelation.ImageBeforeText;
             btnSimpan.UseVisualStyleBackColor = false;
-            btnSimpan.Click += btnSimpan_Click;
+            btnSimpan.Click += btnSimpan_ClickAsync;
             // 
             // btnBatal
             // 

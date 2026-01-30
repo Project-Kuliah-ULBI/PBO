@@ -14,6 +14,7 @@ using iText.Layout.Element;
 using iText.Layout.Properties;
 using iText.Kernel.Font;
 using iText.IO.Font;
+using SiJabarApp.helper;
 
 namespace SiJabarApp
 {
@@ -51,6 +52,7 @@ namespace SiJabarApp
             ConnectToMongoDB();
             SetupStyling();
             LoadData();
+            CreateDeveloperButton();
 
             // --- BAGIAN BARU: SET LABEL USER ---
             // Kode ini akan error jika kamu belum membuat label "lblUserLogin" di Designer
@@ -319,6 +321,71 @@ namespace SiJabarApp
             {
                 // Restart Aplikasi agar kembali ke Login bersih
                 Application.Restart();
+            }
+        }
+
+        private void CreateDeveloperButton()
+        {
+            // Membuat tombol baru khusus Developer
+            FontAwesome.Sharp.IconButton btnSeed = new FontAwesome.Sharp.IconButton();
+            btnSeed.Text = "  Upload Dataset (Dev)";
+            btnSeed.IconChar = FontAwesome.Sharp.IconChar.Database;
+            btnSeed.IconColor = Color.White;
+            btnSeed.ForeColor = Color.White;
+            btnSeed.BackColor = Color.FromArgb(255, 140, 0); // Warna Oranye biar beda
+            btnSeed.Dock = DockStyle.Bottom; // Taruh paling bawah sidebar
+            btnSeed.Height = 50;
+            btnSeed.FlatStyle = FlatStyle.Flat;
+            btnSeed.FlatAppearance.BorderSize = 0;
+            btnSeed.TextImageRelation = TextImageRelation.ImageBeforeText;
+
+            // Event Handler saat diklik
+            btnSeed.Click += BtnSeed_Click;
+
+            // Masukkan ke Panel Sidebar (pastikan nama panel sidebar Anda benar, default: panelSidebar)
+            if (panelSidebar != null)
+            {
+                panelSidebar.Controls.Add(btnSeed);
+                // Agar tombol Logout tetap paling bawah, kita atur urutannya jika perlu, 
+                // tapi DockStyle.Bottom biasanya menumpuk ke atas.
+            }
+        }
+
+        // LOGIKA SAAT TOMBOL DIKLIK
+        private async void BtnSeed_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog ofd = new OpenFileDialog();
+            ofd.Filter = "CSV Files (*.csv)|*.csv";
+            ofd.Title = "Pilih Dataset Open Data Jabar";
+
+            if (ofd.ShowDialog() == DialogResult.OK)
+            {
+                string filePath = ofd.FileName;
+
+                // Konfirmasi
+                var confirm = MessageBox.Show($"Anda akan memproses file:\n{Path.GetFileName(filePath)}\n\nIni akan memakan waktu untuk proses AI. Lanjut?",
+                                              "Konfirmasi Developer", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+                if (confirm == DialogResult.Yes)
+                {
+                    this.Cursor = Cursors.WaitCursor;
+                    try
+                    {
+                        var csvHelper = new CsvIngestionHelper();
+                        await csvHelper.ProcessOpenDataCsv(filePath);
+
+                        MessageBox.Show("Sukses! Dataset berhasil dipelajari oleh Chatbot (Masuk ke Supabase).",
+                                        "Seeding Selesai", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Gagal memproses CSV.\nError: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    finally
+                    {
+                        this.Cursor = Cursors.Default;
+                    }
+                }
             }
         }
     }
