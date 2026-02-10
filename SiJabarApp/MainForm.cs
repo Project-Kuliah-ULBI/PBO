@@ -113,6 +113,10 @@ namespace SiJabarApp
                 btnEdit.Visible = false;
                 btnDelete.Visible = false;
             }
+            if (activeRole != "Admin")
+            {
+                btnImportCSV.Visible = false;
+            }
         }
 
         // --- 3. STYLING TABEL ---
@@ -345,6 +349,44 @@ namespace SiJabarApp
             {
                 if (chatbotPopup.Visible) chatbotPopup.Hide();
                 else { chatbotPopup.Show(); chatbotPopup.BringToFront(); }
+            }
+        }
+
+        private void btnChart_Click(object sender, EventArgs e)
+        {
+            // Membuka form chart sebagai dialog box
+            FormChart frm = new FormChart();
+            frm.ShowDialog();
+        }
+
+        private async void btnImportCSV_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog ofd = new OpenFileDialog();
+            ofd.Filter = "CSV Files (*.csv)|*.csv";
+
+            if (ofd.ShowDialog() == DialogResult.OK)
+            {
+                try
+                {
+                    this.Cursor = Cursors.WaitCursor;
+                    btnImportCSV.Enabled = false;
+                    btnImportCSV.Text = "Processing...";
+
+                    var ingestionHelper = new SiJabarApp.helper.CsvIngestionHelper();
+                    await ingestionHelper.ProcessOpenDataCsv(ofd.FileName);
+
+                    MessageBox.Show("Data CSV berhasil diproses dan dimasukkan ke database RAG!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Gagal mengimpor data: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                finally
+                {
+                    this.Cursor = Cursors.Default;
+                    btnImportCSV.Enabled = true;
+                    btnImportCSV.Text = "Import RAG Data";
+                }
             }
         }
 

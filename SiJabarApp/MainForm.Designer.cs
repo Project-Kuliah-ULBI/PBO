@@ -32,6 +32,8 @@
             DataGridViewCellStyle dataGridViewCellStyle2 = new DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             panelSidebar = new Panel();
+            btnImportCSV = new FontAwesome.Sharp.IconButton();
+            btnChart = new FontAwesome.Sharp.IconButton();
             btnBukaMap = new FontAwesome.Sharp.IconButton();
             btnLogout = new FontAwesome.Sharp.IconButton();
             btnChatbot = new FontAwesome.Sharp.IconButton();
@@ -72,6 +74,8 @@
             // panelSidebar
             // 
             panelSidebar.BackColor = Color.FromArgb(33, 37, 41);
+            panelSidebar.Controls.Add(btnImportCSV);
+            panelSidebar.Controls.Add(btnChart);
             panelSidebar.Controls.Add(btnBukaMap);
             panelSidebar.Controls.Add(btnLogout);
             panelSidebar.Controls.Add(btnChatbot);
@@ -84,6 +88,52 @@
             panelSidebar.Name = "panelSidebar";
             panelSidebar.Size = new Size(260, 720);
             panelSidebar.TabIndex = 0;
+            // 
+            // btnImportCSV
+            // 
+            btnImportCSV.Dock = DockStyle.Top;
+            btnImportCSV.FlatAppearance.BorderSize = 0;
+            btnImportCSV.FlatStyle = FlatStyle.Flat;
+            btnImportCSV.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnImportCSV.ForeColor = Color.White;
+            btnImportCSV.IconChar = FontAwesome.Sharp.IconChar.Inbox;
+            btnImportCSV.IconColor = Color.White;
+            btnImportCSV.IconFont = FontAwesome.Sharp.IconFont.Auto;
+            btnImportCSV.IconSize = 24;
+            btnImportCSV.ImageAlign = ContentAlignment.MiddleLeft;
+            btnImportCSV.Location = new Point(0, 355);
+            btnImportCSV.Name = "btnImportCSV";
+            btnImportCSV.Padding = new Padding(25, 0, 0, 0);
+            btnImportCSV.Size = new Size(260, 55);
+            btnImportCSV.TabIndex = 7;
+            btnImportCSV.Text = "Import CSV";
+            btnImportCSV.TextAlign = ContentAlignment.MiddleLeft;
+            btnImportCSV.TextImageRelation = TextImageRelation.ImageBeforeText;
+            btnImportCSV.UseVisualStyleBackColor = true;
+            btnImportCSV.Click += btnImportCSV_Click;
+            // 
+            // btnChart
+            // 
+            btnChart.Dock = DockStyle.Top;
+            btnChart.FlatAppearance.BorderSize = 0;
+            btnChart.FlatStyle = FlatStyle.Flat;
+            btnChart.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnChart.ForeColor = Color.White;
+            btnChart.IconChar = FontAwesome.Sharp.IconChar.ChartColumn;
+            btnChart.IconColor = Color.White;
+            btnChart.IconFont = FontAwesome.Sharp.IconFont.Auto;
+            btnChart.IconSize = 24;
+            btnChart.ImageAlign = ContentAlignment.MiddleLeft;
+            btnChart.Location = new Point(0, 300);
+            btnChart.Name = "btnChart";
+            btnChart.Padding = new Padding(25, 0, 0, 0);
+            btnChart.Size = new Size(260, 55);
+            btnChart.TabIndex = 6;
+            btnChart.Text = "Charts";
+            btnChart.TextAlign = ContentAlignment.MiddleLeft;
+            btnChart.TextImageRelation = TextImageRelation.ImageBeforeText;
+            btnChart.UseVisualStyleBackColor = true;
+            btnChart.Click += btnChart_Click;
             // 
             // btnBukaMap
             // 
@@ -557,5 +607,7 @@
         private FontAwesome.Sharp.IconButton btnLogout;
         private Label lblUserLogin;
         private FontAwesome.Sharp.IconButton btnBukaMap;
+        private FontAwesome.Sharp.IconButton btnChart;
+        private FontAwesome.Sharp.IconButton btnImportCSV;
     }
 }

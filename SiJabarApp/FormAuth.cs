@@ -363,7 +363,7 @@ namespace SiJabarApp
 
             if (success)
             {
-                MessageBox.Show($"Selamat Datang, {username}!\nRole: {role}", "Login Sukses");
+                MessageBox.Show($"Selamat Datang, {username}!", "Login Sukses");
 
                 // BUKA DASHBOARD UTAMA (MENGIRIM 3 PARAMETER)
                 MainForm dashboard = new MainForm(userId, username, role);
