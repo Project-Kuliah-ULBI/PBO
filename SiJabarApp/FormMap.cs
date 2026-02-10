@@ -12,6 +12,7 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using MongoDB.Driver;
 using SiJabarApp.helper;
+using SiJabarApp.model;
 
 namespace SiJabarApp
 {

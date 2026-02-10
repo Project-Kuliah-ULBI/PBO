@@ -7,6 +7,7 @@ using System.Windows.Forms;
 using System.Windows.Forms.DataVisualization.Charting;
 using MongoDB.Driver;
 using SiJabarApp.helper;
+using SiJabarApp.model;
 
 namespace SiJabarApp
 {

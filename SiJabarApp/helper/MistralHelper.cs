@@ -35,17 +35,24 @@ namespace SiJabarApp.helper
             return result.data[0].embedding.ToObject<float[]>();
         }
 
-        // 2. Fungsi Chat Completion (Tanya Jawab)
+        // 2. Fungsi Chat Completion (Tanya Jawab) - Single Turn (Backward Compatible)
         public static async Task<string> GetChatResponse(string systemPrompt, string userMessage)
+        {
+            var messages = new List<Dictionary<string, string>>
+            {
+                new Dictionary<string, string> { { "role", "system" }, { "content", systemPrompt } },
+                new Dictionary<string, string> { { "role", "user" }, { "content", userMessage } }
+            };
+            return await GetChatResponse(messages);
+        }
+
+        // 3. Fungsi Chat Completion Multi-Turn (Menerima Seluruh Riwayat Percakapan)
+        public static async Task<string> GetChatResponse(List<Dictionary<string, string>> messages)
         {
             var payload = new
             {
                 model = "mistral-tiny", // atau mistral-small
-                messages = new[]
-                {
-                    new { role = "system", content = systemPrompt },
-                    new { role = "user", content = userMessage }
-                },
+                messages = messages,
                 temperature = 0.3
             };
 

@@ -38,6 +38,7 @@
             btnLogout = new FontAwesome.Sharp.IconButton();
             btnChatbot = new FontAwesome.Sharp.IconButton();
             btnExportPDF = new FontAwesome.Sharp.IconButton();
+            btnDashboard = new FontAwesome.Sharp.IconButton();
             btnDataSampah = new FontAwesome.Sharp.IconButton();
             panel1 = new Panel();
             label1 = new Label();
@@ -80,6 +81,7 @@
             panelSidebar.Controls.Add(btnLogout);
             panelSidebar.Controls.Add(btnChatbot);
             panelSidebar.Controls.Add(btnExportPDF);
+            panelSidebar.Controls.Add(btnDashboard);
             panelSidebar.Controls.Add(btnDataSampah);
             panelSidebar.Controls.Add(panel1);
             panelSidebar.Dock = DockStyle.Left;
@@ -252,6 +254,29 @@
             btnDataSampah.TextImageRelation = TextImageRelation.ImageBeforeText;
             btnDataSampah.UseVisualStyleBackColor = true;
             btnDataSampah.Click += btnDataSampah_Click;
+            // 
+            // btnDashboard
+            // 
+            btnDashboard.Dock = DockStyle.Top;
+            btnDashboard.FlatAppearance.BorderSize = 0;
+            btnDashboard.FlatStyle = FlatStyle.Flat;
+            btnDashboard.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnDashboard.ForeColor = Color.White;
+            btnDashboard.IconChar = FontAwesome.Sharp.IconChar.ChartPie;
+            btnDashboard.IconColor = Color.White;
+            btnDashboard.IconFont = FontAwesome.Sharp.IconFont.Auto;
+            btnDashboard.IconSize = 24;
+            btnDashboard.ImageAlign = ContentAlignment.MiddleLeft;
+            btnDashboard.Location = new Point(0, 135);
+            btnDashboard.Name = "btnDashboard";
+            btnDashboard.Padding = new Padding(25, 0, 0, 0);
+            btnDashboard.Size = new Size(260, 55);
+            btnDashboard.TabIndex = 8;
+            btnDashboard.Text = "Dashboard";
+            btnDashboard.TextAlign = ContentAlignment.MiddleLeft;
+            btnDashboard.TextImageRelation = TextImageRelation.ImageBeforeText;
+            btnDashboard.UseVisualStyleBackColor = true;
+            btnDashboard.Click += btnDashboard_Click;
             // 
             // panel1
             // 
@@ -609,5 +634,6 @@
         private FontAwesome.Sharp.IconButton btnBukaMap;
         private FontAwesome.Sharp.IconButton btnChart;
         private FontAwesome.Sharp.IconButton btnImportCSV;
+        private FontAwesome.Sharp.IconButton btnDashboard;
     }
 }

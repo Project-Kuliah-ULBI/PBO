@@ -16,6 +16,10 @@ namespace SiJabarApp
         private IMongoCollection<ChatLog> _chatCollection;
         private string _currentUserId;
 
+        // --- RIWAYAT PERCAKAPAN IN-MEMORY (MULTI-TURN CONTEXT) ---
+        private List<Dictionary<string, string>> _chatHistory = new List<Dictionary<string, string>>();
+        private const int MAX_HISTORY = 10; // Maksimal 10 pesan terakhir yang dikirim ke AI
+
         public Chatbot(string userId)
         {
             // Panggil method dari Designer
@@ -55,7 +59,20 @@ namespace SiJabarApp
                                                .ToListAsync();
 
                 foreach (var log in logs)
+                {
                     AddBubble(log.Message, log.Role == "user");
+
+                    // Muat juga ke _chatHistory agar AI ingat percakapan sebelumnya
+                    _chatHistory.Add(new Dictionary<string, string>
+                    {
+                        { "role", log.Role == "user" ? "user" : "assistant" },
+                        { "content", log.Message }
+                    });
+                }
+
+                // Batasi hanya simpan pesan terakhir
+                if (_chatHistory.Count > MAX_HISTORY)
+                    _chatHistory = _chatHistory.GetRange(_chatHistory.Count - MAX_HISTORY, MAX_HISTORY);
 
                 ScrollBottom();
             }
@@ -63,7 +80,7 @@ namespace SiJabarApp
         }
 
         // ---------------------------------------------------------
-        // LOGIKA UTAMA: SEND ACTION (RAG)
+        // LOGIKA UTAMA: SEND ACTION (RAG + MULTI-TURN CONTEXT)
         // ---------------------------------------------------------
         private async void SendAction()
         {
@@ -76,6 +93,13 @@ namespace SiJabarApp
 
             // Simpan log user ke MongoDB (History)
             await SaveLogToMongo("user", msg);
+
+            // Tambahkan ke riwayat in-memory
+            _chatHistory.Add(new Dictionary<string, string>
+            {
+                { "role", "user" },
+                { "content", msg }
+            });
 
             try
             {
@@ -106,20 +130,50 @@ namespace SiJabarApp
                     "PERAN: Anda adalah 'SiJabar Assistant', asisten cerdas aplikasi pengelolaan sampah Jawa Barat.\n" +
                     "TUGAS: Jawab pertanyaan user dengan ramah, singkat, dan informatif.\n" +
                     "ATURAN:\n" +
+                    "- Anda MEMILIKI riwayat percakapan. Pesan-pesan sebelumnya sudah disertakan dalam konteks ini. Gunakan riwayat tersebut untuk menjawab pertanyaan lanjutan.\n" +
+                    "- Jika user bertanya apakah Anda ingat percakapan sebelumnya, jawab YA dan referensikan topik yang sudah dibahas.\n" +
                     "- Gunakan DATA PENDUKUNG di bawah ini sebagai sumber kebenaran utama.\n" +
                     "- Jika data pendukung menjawab pertanyaan, gunakan informasi tersebut.\n" +
                     "- Jika tidak ada data pendukung, berikan saran umum tentang sampah.\n" +
                     "- JANGAN berikan kode program/coding.\n\n" +
                     contextSb.ToString();
 
-                // 6. Minta Jawaban ke AI (Generation)
-                string aiResponse = await MistralHelper.GetChatResponse(systemPrompt, msg);
+                // 6. BANGUN MESSAGES ARRAY (MULTI-TURN)
+                var messages = new List<Dictionary<string, string>>();
 
-                // 7. Tampilkan Jawaban AI
+                // System prompt selalu di awal
+                messages.Add(new Dictionary<string, string>
+                {
+                    { "role", "system" },
+                    { "content", systemPrompt }
+                });
+
+                // Ambil riwayat percakapan terakhir (batasi agar tidak melebihi token limit)
+                int startIdx = Math.Max(0, _chatHistory.Count - MAX_HISTORY);
+                for (int i = startIdx; i < _chatHistory.Count; i++)
+                {
+                    messages.Add(_chatHistory[i]);
+                }
+
+                // 7. Minta Jawaban ke AI (Generation) dengan FULL CONTEXT
+                string aiResponse = await MistralHelper.GetChatResponse(messages);
+
+                // 8. Tampilkan Jawaban AI
                 AddBubble(aiResponse, false);
 
                 // Simpan log bot ke MongoDB
                 await SaveLogToMongo("bot", aiResponse);
+
+                // Tambahkan jawaban AI ke riwayat in-memory
+                _chatHistory.Add(new Dictionary<string, string>
+                {
+                    { "role", "assistant" },
+                    { "content", aiResponse }
+                });
+
+                // Batasi ukuran riwayat
+                if (_chatHistory.Count > MAX_HISTORY)
+                    _chatHistory = _chatHistory.GetRange(_chatHistory.Count - MAX_HISTORY, MAX_HISTORY);
             }
             catch (Exception ex)
             {
@@ -148,6 +202,7 @@ namespace SiJabarApp
                 _chatCollection.DeleteManyAsync(c => c.UserId == _currentUserId);
             }
             chatPanel.Controls.Clear();
+            _chatHistory.Clear(); // Reset context AI
         }
     }
 }

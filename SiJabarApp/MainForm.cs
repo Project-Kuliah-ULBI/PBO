@@ -19,6 +19,7 @@ using iText.Kernel.Font;
 using iText.IO.Font;
 
 using SiJabarApp.helper;
+using SiJabarApp.model;
 
 namespace SiJabarApp
 {
@@ -390,6 +391,12 @@ namespace SiJabarApp
             }
         }
 
+        private void btnDashboard_Click(object sender, EventArgs e)
+        {
+            FormDashboard frm = new FormDashboard();
+            frm.ShowDialog();
+        }
+
         private void btnLogout_Click(object sender, EventArgs e)
         {
             if (MessageBox.Show("Yakin ingin keluar?", "Log Out", MessageBoxButtons.YesNo) == DialogResult.Yes)
@@ -400,33 +407,5 @@ namespace SiJabarApp
                 this.Close();
             }
         }
-    }
-
-    // --- MODEL DATA ---
-    public class SampahModel
-    {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; }
-        public string UserId { get; set; }
-        public string Wilayah { get; set; }
-        public string Jenis { get; set; }
-        public double Berat { get; set; }
-        public string Status { get; set; }
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
-        public DateTime Tanggal { get; set; }
-        public DateTime JadwalAngkut { get; set; }
-        public string Keterangan { get; set; }
-    }
-
-    public class MasterLokasiModel
-    {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; }
-        public string NamaTPS { get; set; }
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
     }
 }

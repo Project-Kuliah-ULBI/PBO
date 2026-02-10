@@ -9,6 +9,7 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json.Linq;
 using SiJabarApp.helper;
+using SiJabarApp.model;
 using System.Globalization;
 
 namespace SiJabarApp
