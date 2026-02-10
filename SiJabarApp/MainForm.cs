@@ -1,35 +1,36 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
-using MongoDB.Bson;                       // Wajib untuk ObjectId
-using MongoDB.Bson.Serialization.Attributes; // Wajib untuk Model
-using MongoDB.Driver;                     // Driver Database
-using FontAwesome.Sharp;                  // Library Icon
-using System.Runtime.InteropServices;     // Untuk Drag Window
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Collections.Generic;
 
-// --- LIBRARY PDF (ITEXT7) ---
+// --- LIBRARY DATABASE ---
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Driver;
+
+// --- LIBRARY UI & PDF ---
 using iText.Kernel.Pdf;
 using iText.Layout;
 using iText.Layout.Element;
 using iText.Layout.Properties;
 using iText.Kernel.Font;
 using iText.IO.Font;
+
 using SiJabarApp.helper;
 
 namespace SiJabarApp
 {
-    // ==========================================
-    // 1. CLASS FORM UTAMA
-    // ==========================================
     public partial class MainForm : Form
     {
         // --- VARIABEL GLOBAL ---
         private IMongoCollection<SampahModel> collection;
 
-        // --- VARIABEL SESI USER (PENTING) ---
+        // --- VARIABEL SESI USER & ROLE ---
         private string activeUserId;
         private string activeUserName;
-        public string currentUserId; // Set nilai ini saat login berhasil
+        public string activeRole;
 
         private Chatbot chatbotPopup;
 
@@ -39,29 +40,45 @@ namespace SiJabarApp
         [DllImport("user32.DLL", EntryPoint = "SendMessage")]
         private extern static void SendMessage(System.IntPtr hWnd, int wMsg, int wParam, int lParam);
 
-        // --- KONSTRUKTOR (Terima ID dan Nama User) ---
-        public MainForm(string userId, string userName)
+        // =============================================================
+        // 1. KONSTRUKTOR KOSONG (WAJIB ADA UNTUK DESIGNER)
+        // =============================================================
+        public MainForm()
+        {
+            InitializeComponent();
+            // Inisialisasi default agar designer tidak error
+            this.activeRole = "Masyarakat";
+            ConnectToMongoDB();
+            SetupStyling();
+        }
+
+        // =============================================================
+        // 2. KONSTRUKTOR UTAMA (DIPANGGIL SAAT LOGIN)
+        // =============================================================
+        public MainForm(string userId, string userName, string userRole)
         {
             InitializeComponent();
 
             // 1. Simpan Data Sesi
             this.activeUserId = userId;
             this.activeUserName = userName;
+            this.activeRole = userRole;
 
             // 2. Setup Awal
             ConnectToMongoDB();
             SetupStyling();
-            LoadData();
-            CreateDeveloperButton();
 
-            // --- BAGIAN BARU: SET LABEL USER ---
-            // Kode ini akan error jika kamu belum membuat label "lblUserLogin" di Designer
-            // Pastikan (Name) label di properties sudah diubah menjadi: lblUserLogin
+            // 3. ATUR HAK AKSES 
+            ApplyRolePermissions();
+
+            // 4. Load Data
+            LoadData();
+
+            // 5. Set Label User
             if (lblUserLogin != null)
             {
-                lblUserLogin.Text = $"Halo, {activeUserName}!";
+                lblUserLogin.Text = $"Halo, {activeUserName} ({activeRole})";
             }
-            // -----------------------------------
         }
 
         // --- 1. KONEKSI DATABASE ---
@@ -79,54 +96,90 @@ namespace SiJabarApp
             }
         }
 
-        // --- 2. STYLING TABEL ---
+        // --- 2. LOGIKA HAK AKSES (ROLE PERMISSIONS) ---
+        private void ApplyRolePermissions()
+        {
+            // PENTING: Cek null agar Designer tidak crash
+            if (btnAdd == null) return;
+
+            // Default: Semua nyala dulu
+            btnAdd.Visible = true;
+            btnEdit.Visible = true;
+            btnDelete.Visible = true;
+
+            if (activeRole == "Masyarakat")
+            {
+                // Masyarakat: Hanya Lapor, Tidak boleh Edit/Hapus
+                btnEdit.Visible = false;
+                btnDelete.Visible = false;
+            }
+        }
+
+        // --- 3. STYLING TABEL ---
         private void SetupStyling()
         {
-            gridSampah.EnableHeadersVisualStyles = false;
+            if (gridSampah == null) return;
 
-            // Header
+            gridSampah.EnableHeadersVisualStyles = false;
             gridSampah.ColumnHeadersDefaultCellStyle.BackColor = Color.White;
             gridSampah.ColumnHeadersDefaultCellStyle.ForeColor = Color.Black;
-            gridSampah.ColumnHeadersDefaultCellStyle.SelectionBackColor = Color.White;
-            gridSampah.ColumnHeadersDefaultCellStyle.SelectionForeColor = Color.Black;
-            gridSampah.ColumnHeadersDefaultCellStyle.Font = new Font("Century Gothic", 10, FontStyle.Bold);
+            gridSampah.ColumnHeadersDefaultCellStyle.Font = new Font("Century Gothic", 9, FontStyle.Bold);
             gridSampah.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             gridSampah.ColumnHeadersHeight = 50;
 
-            // Rows
-            gridSampah.DefaultCellStyle.Font = new Font("Century Gothic", 10);
-            gridSampah.DefaultCellStyle.BackColor = Color.White;
-            gridSampah.DefaultCellStyle.ForeColor = Color.Black;
-            gridSampah.DefaultCellStyle.SelectionBackColor = Color.FromArgb(240, 240, 240);
-            gridSampah.DefaultCellStyle.SelectionForeColor = Color.Black;
+            gridSampah.DefaultCellStyle.Font = new Font("Century Gothic", 9);
             gridSampah.RowTemplate.Height = 45;
+            gridSampah.AllowUserToAddRows = false;
 
-            // Sorting
-            foreach (DataGridViewColumn col in gridSampah.Columns)
-            {
-                col.SortMode = DataGridViewColumnSortMode.Automatic;
-            }
+            // DEFINISI KOLOM
+            gridSampah.Columns.Clear();
+            gridSampah.Columns.Add("colId", "ID");
+            gridSampah.Columns["colId"].Visible = false;
 
-            // Hide ID & UserId
-            if (gridSampah.Columns["colId"] != null) gridSampah.Columns["colId"].Visible = false;
+            gridSampah.Columns.Add("colWilayah", "Wilayah");
+            gridSampah.Columns.Add("colJenis", "Jenis");
+            gridSampah.Columns.Add("colBerat", "Berat (Kg)");
+            gridSampah.Columns.Add("colStatus", "Status");
+            gridSampah.Columns.Add("colTanggal", "Tgl Lapor");
+            gridSampah.Columns.Add("colJadwal", "Jadwal Angkut");
+            gridSampah.Columns.Add("colKet", "Keterangan");
+
+            gridSampah.Columns["colWilayah"].Width = 150;
+            gridSampah.Columns["colKet"].Width = 200;
         }
 
-        // --- 3. READ DATA (FILTER BY USER ID) ---
+        // --- 4. LOAD DATA (SESUAI ROLE) ---
         private void LoadData()
         {
+            if (collection == null || gridSampah == null) return;
+
             try
             {
-                // HANYA AMBIL DATA MILIK USER YANG LOGIN
-                var filter = Builders<SampahModel>.Filter.Eq(x => x.UserId, activeUserId);
-                var dataList = collection.Find(filter).ToList();
+                List<SampahModel> dataList;
+
+                // LOGIKA FILTER DATA
+                if (activeRole == "Admin" || activeRole == "Petugas")
+                {
+                    // Admin & Petugas melihat SEMUA DATA
+                    dataList = collection.Find(_ => true).ToList();
+                }
+                else
+                {
+                    // Masyarakat hanya melihat DATA MILIK SENDIRI
+                    var filter = Builders<SampahModel>.Filter.Eq(x => x.UserId, activeUserId);
+                    dataList = collection.Find(filter).ToList();
+                }
 
                 gridSampah.Rows.Clear();
-
                 foreach (var item in dataList)
                 {
-                    // Pastikan urutan kolom di GridView Designer sesuai:
-                    // [0] ID, [1] Wilayah, [2] Jenis, [3] Berat, [4] Status
-                    gridSampah.Rows.Add(item.Id, item.Wilayah, item.Jenis, item.Berat, item.Status);
+                    string tglLapor = item.Tanggal.ToString("dd MMM yyyy");
+                    string tglJadwal = (item.JadwalAngkut == DateTime.MinValue) ? "-" : item.JadwalAngkut.ToString("dd MMM yyyy");
+
+                    gridSampah.Rows.Add(
+                        item.Id, item.Wilayah, item.Jenis, item.Berat, item.Status,
+                        tglLapor, tglJadwal, item.Keterangan
+                    );
                 }
             }
             catch (Exception ex)
@@ -136,13 +189,12 @@ namespace SiJabarApp
         }
 
         // ==========================================================
-        // EVENTS BUTTON
+        // EVENTS BUTTON (CRUD)
         // ==========================================================
-
         private void btnAdd_Click(object sender, EventArgs e)
         {
-            // Kirim ID User saat menambah data baru
-            FormInput frm = new FormInput(activeUserId);
+            // Kirim UserId dan Role ke FormInput (Constructor 2 Parameter)
+            FormInput frm = new FormInput(activeUserId, activeRole);
             if (frm.ShowDialog() == DialogResult.OK) LoadData();
         }
 
@@ -151,8 +203,8 @@ namespace SiJabarApp
             if (gridSampah.SelectedRows.Count > 0)
             {
                 string idTerpilih = gridSampah.SelectedRows[0].Cells[0].Value.ToString();
-                // Mode Edit: Kirim ID Data, flag true
-                FormInput frm = new FormInput(idTerpilih, true);
+                // Kirim UserId, Role, dan ID ke FormInput (Constructor 3 Parameter)
+                FormInput frm = new FormInput(activeUserId, activeRole, idTerpilih);
                 if (frm.ShowDialog() == DialogResult.OK) LoadData();
             }
             else
@@ -172,8 +224,7 @@ namespace SiJabarApp
                     try
                     {
                         string idTerpilih = gridSampah.SelectedRows[0].Cells[0].Value.ToString();
-                        var filter = Builders<SampahModel>.Filter.Eq(x => x.Id, idTerpilih);
-                        collection.DeleteOne(filter);
+                        collection.DeleteOne(Builders<SampahModel>.Filter.Eq(x => x.Id, idTerpilih));
                         LoadData();
                         MessageBox.Show("Data berhasil dihapus.");
                     }
@@ -186,24 +237,42 @@ namespace SiJabarApp
             }
         }
 
-        // --- FITUR EXPORT PDF ---
+        // ==========================================================
+        // TOMBOL BUKA MAP
+        // ==========================================================
+
+        // METHOD INI UNTUK MENGATASI ERROR DESIGNER (CS0103)
+        private void btnBukaMap_Click_1(object sender, EventArgs e)
+        {
+            btnBukaMap_Click(sender, e);
+        }
+
+        private void btnBukaMap_Click(object sender, EventArgs e)
+        {
+            FormMap mapForm = new FormMap(activeUserId);
+            mapForm.Show();
+        }
+
+        // ==========================================================
+        // FITUR PDF
+        // ==========================================================
         private void btnExportPDF_Click(object sender, EventArgs e)
         {
             if (gridSampah.Rows.Count == 0)
             {
-                MessageBox.Show("Tidak ada data untuk diekspor!", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Tidak ada data!", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             SaveFileDialog sfd = new SaveFileDialog();
             sfd.Filter = "PDF Files|*.pdf";
-            sfd.FileName = $"Laporan Sampah - {activeUserName}.pdf"; // Nama file pakai nama user
+            sfd.FileName = $"Laporan Sampah - {activeUserName}.pdf";
 
             if (sfd.ShowDialog() == DialogResult.OK)
             {
                 try
                 {
-                    string fontPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), "arial.ttf");
+                    string fontPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), "arial.ttf");
                     PdfFont fontArial = PdfFontFactory.CreateFont(fontPath, PdfEncodings.IDENTITY_H);
 
                     using (PdfWriter writer = new PdfWriter(sfd.FileName))
@@ -211,97 +280,62 @@ namespace SiJabarApp
                     using (Document doc = new Document(pdf))
                     {
                         doc.SetFont(fontArial);
+                        pdf.SetDefaultPageSize(iText.Kernel.Geom.PageSize.A4.Rotate());
 
-                        // HEADER
-                        Paragraph judul = new Paragraph("LAPORAN DATA SAMPAH JAWA BARAT")
-                            .SetTextAlignment(TextAlignment.CENTER)
-                            .SetFontSize(18);
-                        doc.Add(judul);
+                        doc.Add(new Paragraph("LAPORAN DATA SAMPAH JAWA BARAT").SetTextAlignment(TextAlignment.CENTER).SetFontSize(18));
+                        doc.Add(new Paragraph($"User: {activeUserName} ({activeRole}) | {DateTime.Now}").SetTextAlignment(TextAlignment.CENTER).SetFontSize(10).SetMarginBottom(20));
 
-                        Paragraph subJudul = new Paragraph($"Oleh User: {activeUserName}\nDicetak pada: " + DateTime.Now.ToString("dd MMMM yyyy HH:mm"))
-                            .SetTextAlignment(TextAlignment.CENTER)
-                            .SetFontSize(10)
-                            .SetMarginBottom(20);
-                        doc.Add(subJudul);
+                        float[] colWidths = { 2, 2, 1, 2, 2, 2, 3 };
+                        Table table = new Table(UnitValue.CreatePercentArray(colWidths)).SetWidth(UnitValue.CreatePercentValue(100));
 
-                        // TABEL
-                        Table table = new Table(UnitValue.CreatePercentArray(new float[] { 3, 2, 2, 2 }));
-                        table.SetWidth(UnitValue.CreatePercentValue(100));
-
-                        string[] headers = { "Wilayah", "Jenis Sampah", "Berat (Kg)", "Status" };
+                        string[] headers = { "Wilayah", "Jenis", "Berat", "Status", "Tgl Lapor", "Jadwal", "Keterangan" };
                         foreach (string h in headers)
-                        {
-                            Cell cell = new Cell().Add(new Paragraph(new Text(h))); // Header Bold Manual di Text object jika mau
-                            cell.SetBackgroundColor(iText.Kernel.Colors.ColorConstants.LIGHT_GRAY);
-                            cell.SetTextAlignment(TextAlignment.CENTER);
-                            table.AddHeaderCell(cell);
-                        }
+                            table.AddHeaderCell(new Cell().Add(new Paragraph(h)).SetBackgroundColor(iText.Kernel.Colors.ColorConstants.LIGHT_GRAY).SetTextAlignment(TextAlignment.CENTER).SetFontSize(9));
 
-                        // ISI DATA
                         foreach (DataGridViewRow row in gridSampah.Rows)
                         {
                             if (row.IsNewRow) continue;
+                            string GetVal(int idx) => row.Cells[idx].Value?.ToString() ?? "-";
 
-                            string wilayah = row.Cells[1].Value?.ToString() ?? "-";
-                            string jenis = row.Cells[2].Value?.ToString() ?? "-";
-                            string berat = row.Cells[3].Value?.ToString() ?? "0";
-                            string status = row.Cells[4].Value?.ToString() ?? "-";
-
-                            table.AddCell(new Paragraph(wilayah).SetTextAlignment(TextAlignment.CENTER));
-                            table.AddCell(new Paragraph(jenis).SetTextAlignment(TextAlignment.CENTER));
-                            table.AddCell(new Paragraph(berat).SetTextAlignment(TextAlignment.CENTER));
-                            table.AddCell(new Paragraph(status).SetTextAlignment(TextAlignment.CENTER));
+                            table.AddCell(new Paragraph(GetVal(1)).SetFontSize(9));
+                            table.AddCell(new Paragraph(GetVal(2)).SetFontSize(9));
+                            table.AddCell(new Paragraph(GetVal(3)).SetFontSize(9));
+                            table.AddCell(new Paragraph(GetVal(4)).SetFontSize(9));
+                            table.AddCell(new Paragraph(GetVal(5)).SetFontSize(9));
+                            table.AddCell(new Paragraph(GetVal(6)).SetFontSize(9));
+                            table.AddCell(new Paragraph(GetVal(7)).SetFontSize(9));
                         }
-
                         doc.Add(table);
                     }
-
-                    MessageBox.Show("PDF Berhasil Disimpan!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("PDF Berhasil Disimpan!");
                 }
-                catch (System.IO.IOException)
-                {
-                    MessageBox.Show("File PDF sedang terbuka! Tutup file tersebut lalu coba lagi.", "Gagal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Error Detail: " + ex.ToString(), "Gagal Export", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                catch (Exception ex) { MessageBox.Show("Error Export: " + ex.Message); }
             }
         }
 
-        // --- WINDOW CONTROLS ---
+        // WINDOW CONTROL & UTILS
         private void btnClose_Click(object sender, EventArgs e) => Application.Exit();
         private void btnMinimize_Click(object sender, EventArgs e) => this.WindowState = FormWindowState.Minimized;
-        private void btnMaximize_Click(object sender, EventArgs e)
-        {
-            if (this.WindowState == FormWindowState.Normal)
-            {
-                this.WindowState = FormWindowState.Maximized;
-                btnMaximize.IconChar = IconChar.WindowRestore;
-            }
-            else
-            {
-                this.WindowState = FormWindowState.Normal;
-                btnMaximize.IconChar = IconChar.Square;
-            }
-        }
+        private void btnMaximize_Click(object sender, EventArgs e) =>
+            this.WindowState = (this.WindowState == FormWindowState.Normal) ? FormWindowState.Maximized : FormWindowState.Normal;
+
         private void panelHeader_MouseDown(object sender, MouseEventArgs e)
         {
             ReleaseCapture();
             SendMessage(this.Handle, 0x112, 0xf012, 0);
         }
 
-        // --- NAVIGASI ---
         private void btnDataSampah_Click(object sender, EventArgs e) => LoadData();
+
+        // --- CHATBOT ---
         private void btnChatbot_Click(object sender, EventArgs e)
         {
             if (chatbotPopup == null || chatbotPopup.IsDisposed)
             {
-                // PERBAIKAN: Kirim activeUserId ke constructor Chatbot
                 chatbotPopup = new Chatbot(activeUserId);
-
                 int x = this.Location.X + this.Width - chatbotPopup.Width - 20;
                 int y = this.Location.Y + this.Height - chatbotPopup.Height - 20;
+
                 chatbotPopup.StartPosition = FormStartPosition.Manual;
                 chatbotPopup.Location = new Point(x, y);
                 chatbotPopup.Owner = this;
@@ -316,94 +350,41 @@ namespace SiJabarApp
 
         private void btnLogout_Click(object sender, EventArgs e)
         {
-            var jawab = MessageBox.Show($"Sampai jumpa, {activeUserName}. Yakin ingin keluar?", "Log Out", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-            if (jawab == DialogResult.Yes)
+            if (MessageBox.Show("Yakin ingin keluar?", "Log Out", MessageBoxButtons.YesNo) == DialogResult.Yes)
             {
-                // Restart Aplikasi agar kembali ke Login bersih
-                Application.Restart();
-            }
-        }
-
-        private void CreateDeveloperButton()
-        {
-            // Membuat tombol baru khusus Developer
-            FontAwesome.Sharp.IconButton btnSeed = new FontAwesome.Sharp.IconButton();
-            btnSeed.Text = "  Upload Dataset (Dev)";
-            btnSeed.IconChar = FontAwesome.Sharp.IconChar.Database;
-            btnSeed.IconColor = Color.White;
-            btnSeed.ForeColor = Color.White;
-            btnSeed.BackColor = Color.FromArgb(255, 140, 0); // Warna Oranye biar beda
-            btnSeed.Dock = DockStyle.Bottom; // Taruh paling bawah sidebar
-            btnSeed.Height = 50;
-            btnSeed.FlatStyle = FlatStyle.Flat;
-            btnSeed.FlatAppearance.BorderSize = 0;
-            btnSeed.TextImageRelation = TextImageRelation.ImageBeforeText;
-
-            // Event Handler saat diklik
-            btnSeed.Click += BtnSeed_Click;
-
-            // Masukkan ke Panel Sidebar (pastikan nama panel sidebar Anda benar, default: panelSidebar)
-            if (panelSidebar != null)
-            {
-                panelSidebar.Controls.Add(btnSeed);
-                // Agar tombol Logout tetap paling bawah, kita atur urutannya jika perlu, 
-                // tapi DockStyle.Bottom biasanya menumpuk ke atas.
-            }
-        }
-
-        // LOGIKA SAAT TOMBOL DIKLIK
-        private async void BtnSeed_Click(object sender, EventArgs e)
-        {
-            OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Filter = "CSV Files (*.csv)|*.csv";
-            ofd.Title = "Pilih Dataset Open Data Jabar";
-
-            if (ofd.ShowDialog() == DialogResult.OK)
-            {
-                string filePath = ofd.FileName;
-
-                // Konfirmasi
-                var confirm = MessageBox.Show($"Anda akan memproses file:\n{Path.GetFileName(filePath)}\n\nIni akan memakan waktu untuk proses AI. Lanjut?",
-                                              "Konfirmasi Developer", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
-                if (confirm == DialogResult.Yes)
-                {
-                    this.Cursor = Cursors.WaitCursor;
-                    try
-                    {
-                        var csvHelper = new CsvIngestionHelper();
-                        await csvHelper.ProcessOpenDataCsv(filePath);
-
-                        MessageBox.Show("Sukses! Dataset berhasil dipelajari oleh Chatbot (Masuk ke Supabase).",
-                                        "Seeding Selesai", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Gagal memproses CSV.\nError: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                    finally
-                    {
-                        this.Cursor = Cursors.Default;
-                    }
-                }
+                this.Hide();
+                FormAuth login = new FormAuth();
+                login.ShowDialog();
+                this.Close();
             }
         }
     }
 
-    // ==========================================
-    // 2. MODEL DATA
-    // ==========================================
+    // --- MODEL DATA ---
     public class SampahModel
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; }
-
         public string UserId { get; set; }
-
         public string Wilayah { get; set; }
         public string Jenis { get; set; }
         public double Berat { get; set; }
         public string Status { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public DateTime Tanggal { get; set; }
+        public DateTime JadwalAngkut { get; set; }
+        public string Keterangan { get; set; }
+    }
+
+    public class MasterLokasiModel
+    {
+        [BsonId]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string Id { get; set; }
+        public string NamaTPS { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
     }
 }

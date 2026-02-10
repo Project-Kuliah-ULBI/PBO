@@ -52,10 +52,9 @@ namespace SiJabarApp
 
         public FormAuth()
         {
-            // 1. InitializeComponent DULUAN
             InitializeComponent();
 
-            // 2. PAKSA UKURAN BESAR
+            // PAKSA UKURAN BESAR & SETUP FORM
             this.ClientSize = new Size(panelWidth * 2, formHeight);
             this.FormBorderStyle = FormBorderStyle.None;
             this.StartPosition = FormStartPosition.CenterScreen;
@@ -84,14 +83,17 @@ namespace SiJabarApp
 
         private void SetupUI()
         {
+            // Panel Register (Kanan Awalnya)
             panelRegister = CreateFormPanel("Buat Akun", "Gunakan email untuk pendaftaran", "DAFTAR", true);
             panelRegister.Location = new Point(panelWidth, 0);
             this.Controls.Add(panelRegister);
 
+            // Panel Login (Kiri Awalnya)
             panelLogin = CreateFormPanel("Masuk", "atau gunakan akun anda", "MASUK", false);
             panelLogin.Location = new Point(0, 0);
             this.Controls.Add(panelLogin);
 
+            // Panel Overlay (Penutup Geser)
             panelOverlay = new Panel
             {
                 Size = new Size(panelWidth, formHeight),
@@ -163,8 +165,6 @@ namespace SiJabarApp
                 btnClose.ForeColor = Color.DimGray;
                 btnMinimize.BackColor = Color.White;
                 btnMinimize.ForeColor = Color.DimGray;
-                btnClose.MouseEnter += (s, e) => btnClose.ForeColor = Color.White;
-                btnClose.MouseLeave += (s, e) => btnClose.ForeColor = Color.DimGray;
             }
             else
             {
@@ -172,8 +172,6 @@ namespace SiJabarApp
                 btnClose.ForeColor = Color.White;
                 btnMinimize.BackColor = secondaryColor;
                 btnMinimize.ForeColor = Color.White;
-                btnClose.MouseEnter += (s, e) => btnClose.ForeColor = Color.White;
-                btnClose.MouseLeave += (s, e) => btnClose.ForeColor = Color.White;
             }
         }
 
@@ -319,6 +317,7 @@ namespace SiJabarApp
             return p;
         }
 
+        // --- AKSI REGISTER ---
         private void BtnActionRegister_Click(object sender, EventArgs e)
         {
             if (dbHelper == null) dbHelper = new MongoHelper();
@@ -331,13 +330,6 @@ namespace SiJabarApp
                 return;
             }
 
-            string emailPattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
-            if (!Regex.IsMatch(txtRegEmail.Text, emailPattern))
-            {
-                MessageBox.Show("Format email tidak valid!", "Validasi Email", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
             string msg;
             this.Cursor = Cursors.WaitCursor;
             bool success = dbHelper.RegisterUser(txtRegName.Text, txtRegEmail.Text, txtRegPass.Text, out msg);
@@ -346,7 +338,9 @@ namespace SiJabarApp
             if (success)
             {
                 MessageBox.Show(msg, "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // Auto switch ke Login view
                 animationTimer.Start();
+                // Reset form
                 txtRegName.Text = "Nama"; txtRegName.ForeColor = Color.Gray;
                 txtRegEmail.Text = "Email"; txtRegEmail.ForeColor = Color.Gray;
                 txtRegPass.Text = "Password"; txtRegPass.ForeColor = Color.Gray; txtRegPass.UseSystemPasswordChar = false;
@@ -357,24 +351,25 @@ namespace SiJabarApp
             }
         }
 
+        // --- AKSI LOGIN (PENTING!) ---
         private void BtnActionLogin_Click(object sender, EventArgs e)
         {
             if (dbHelper == null) dbHelper = new MongoHelper();
 
-            string msg, username, userId; // Tambah variabel userId
+            string msg, username, userId, role;
 
-            // Panggil LoginUser dengan parameter baru
-            bool success = dbHelper.LoginUser(txtLogEmail.Text, txtLogPass.Text, out msg, out username, out userId);
+            // Memanggil Helper: Mengirim Email & Pass, Menerima Msg, Username, UserId, Role
+            bool success = dbHelper.LoginUser(txtLogEmail.Text, txtLogPass.Text, out msg, out username, out userId, out role);
 
             if (success)
             {
-                MessageBox.Show($"Selamat Datang, {username}!", "Login Sukses");
+                MessageBox.Show($"Selamat Datang, {username}!\nRole: {role}", "Login Sukses");
 
-                // KIRIM ID DAN USERNAME KE MAINFORM
-                MainForm dashboard = new MainForm(userId, username);
+                // BUKA DASHBOARD UTAMA (MENGIRIM 3 PARAMETER)
+                MainForm dashboard = new MainForm(userId, username, role);
                 dashboard.Show();
 
-                this.Hide();
+                this.Hide(); // Sembunyikan form auth
             }
             else
             {
@@ -407,6 +402,7 @@ namespace SiJabarApp
 
             tb.Location = new Point(20, (inputHeight - tb.Height) / 2);
 
+            // Logic Placeholder
             tb.Enter += (s, e) => {
                 if (tb.Text == placeholder)
                 {
@@ -464,20 +460,15 @@ namespace SiJabarApp
         {
             if (isShowRegister)
             {
-                // PERBAIKAN: Ubah font menjadi size 24 khusus untuk "Selamat Datang!"
-                // Agar tidak terpotong
                 lblOverlayTitle.Font = new Font("Georgia", 24, FontStyle.Bold);
                 lblOverlayTitle.Text = "Selamat Datang!";
-
                 lblOverlayDesc.Text = "Untuk tetap terhubung, silakan login info pribadi Anda";
                 btnOverlayAction.Text = "MASUK";
             }
             else
             {
-                // Font Size 32 untuk Halo Teman
                 lblOverlayTitle.Font = new Font("Georgia", 32, FontStyle.Bold);
                 lblOverlayTitle.Text = "Halo, Teman!";
-
                 lblOverlayDesc.Text = "Masukkan detail pribadi Anda dan mulailah perjalanan bersama kami";
                 btnOverlayAction.Text = "DAFTAR";
             }

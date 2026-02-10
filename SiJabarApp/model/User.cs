@@ -16,6 +16,10 @@ namespace SiJabarApp.model
         public string Email { get; set; }
 
         [BsonElement("Password")]
-        public string Password { get; set; } // Ini nanti berisi password yang sudah di-hash (acak)
+        public string Password { get; set; }
+
+        // --- TAMBAHAN WAJIB (AGAR BISA MULTI-ROLE) ---
+        [BsonElement("Role")]
+        public string Role { get; set; }
     }
 }

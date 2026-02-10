@@ -35,10 +35,10 @@ namespace SiJabarApp.helper
         {
             try
             {
-                // 1. Standarisasi Email ke Huruf Kecil (Agar UNIK tidak peduli besar/kecil)
+                // 1. Standarisasi Email ke Huruf Kecil
                 string cleanEmail = email.Trim().ToLower();
 
-                // 2. CEK APAKAH EMAIL SUDAH ADA (UNIQUE CHECK)
+                // 2. CEK APAKAH EMAIL SUDAH ADA
                 var existingUser = usersCollection.Find(u => u.Email == cleanEmail).FirstOrDefault();
 
                 if (existingUser != null)
@@ -54,8 +54,12 @@ namespace SiJabarApp.helper
                 var newUser = new model.User
                 {
                     Fullname = name,
-                    Email = cleanEmail, // Simpan yang sudah lowercase
-                    Password = passwordHash
+                    Email = cleanEmail,
+                    Password = passwordHash,
+
+                    // --- UPDATE PENTING DI SINI ---
+                    // Setiap user yang daftar lewat form otomatis jadi "Masyarakat"
+                    Role = "Masyarakat"
                 };
 
                 usersCollection.InsertOne(newUser);
@@ -69,10 +73,13 @@ namespace SiJabarApp.helper
             }
         }
 
-        public bool LoginUser(string email, string password, out string message, out string userName, out string userId)
+        // --- UPDATE PENTING DI SIGNATURE: Tambah 'out string role' ---
+        public bool LoginUser(string email, string password, out string message, out string userName, out string userId, out string role)
         {
             userName = "";
-            userId = ""; // Default kosong
+            userId = "";
+            role = ""; // Default kosong
+
             try
             {
                 string cleanEmail = email.Trim().ToLower();
@@ -90,7 +97,12 @@ namespace SiJabarApp.helper
                 if (validPassword)
                 {
                     userName = user.Fullname;
-                    userId = user.Id; // Mengambil ID User
+                    userId = user.Id;
+
+                    // --- UPDATE PENTING DI SINI ---
+                    // Ambil Role dari database untuk dikirim ke FormAuth/MainForm
+                    role = user.Role;
+
                     message = "Login Berhasil!";
                     return true;
                 }

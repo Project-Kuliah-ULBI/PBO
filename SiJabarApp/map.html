@@ -1,0 +1,236 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peta SiJabar</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        /* 1. RESET DAN LAYOUT */
+        body, html, #map {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* 2. HAPUS KOTAK DEFAULT MARKER LEAFLET */
+        .leaflet-div-icon {
+            background: transparent;
+            border: none;
+        }
+
+        /* 3. STYLING POPUP INFO */
+        .custom-popup .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            padding: 5px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .custom-popup .leaflet-popup-tip {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .leaflet-popup-content h4 {
+            margin: 0 0 6px 0;
+            color: #333;
+            font-size: 15px;
+            font-weight: 700;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        .leaflet-popup-content p {
+            margin: 0;
+            font-size: 13px;
+            color: #555;
+            line-height: 1.5;
+        }
+
+        /* 4. STYLING MARKER MODERN (SVG + BAYANGAN) */
+        .modern-pin svg {
+            /* Bayangan lembut agar marker terlihat melayang */
+            filter: drop-shadow(0px 3px 2px rgba(0,0,0,0.3));
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Efek membal */
+            transform-origin: bottom center;
+        }
+
+        /* Efek Hover: Marker membesar sedikit */
+        .modern-pin:hover svg {
+            transform: scale(1.15) translateY(-5px);
+            filter: drop-shadow(0px 8px 5px rgba(0,0,0,0.3));
+            cursor: pointer;
+        }
+
+        /* 5. STYLING LEGENDA (KOTAK KETERANGAN) */
+        /* Ini dipakai jika C# menyuntikkan legenda, atau kita buat manual di sini */
+        .legend {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            line-height: 1.6;
+            color: #555;
+            min-width: 150px;
+        }
+
+            .legend h4 {
+                margin: 0 0 8px;
+                font-size: 14px;
+                color: #333;
+                font-weight: bold;
+            }
+
+            .legend div {
+                display: flex;
+                align-items: center;
+            }
+
+            .legend span {
+                display: inline-block;
+                width: 12px;
+                height: 12px;
+                margin-right: 8px;
+                border-radius: 50%;
+            }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script>
+        var map;
+        var markers = [];
+        var inputMarker;
+        var isInputMode = false; // Default: View Only
+
+        // --- PALET WARNA MODERN (SOFT PASTEL) ---
+        // Kita mapping warna hex kasar dari C# ke warna lembut ini
+        const palette = {
+            blue: '#3498db', // Biru Laut (Master)
+            red: '#e74c3c', // Merah Soft (Masuk)
+            green: '#2ecc71', // Hijau Soft (Selesai)
+            yellow: '#f1c40f', // Kuning Emas (Proses)
+            gray: '#95a5a6'  // Default
+        };
+
+        // 1. INISIALISASI PETA
+        function initMap(lat, lon, zoom) {
+            if (map) return;
+
+            map = L.map('map', {
+                zoomControl: false // Kita bisa pindah posisi zoom control kalau mau
+            }).setView([lat, lon], zoom);
+
+            // Tambahkan Zoom Control di pojok kanan bawah (Opsional, biar rapi)
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            // TILE LAYER: OPENSTREETMAP (WARNA-WARNI)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // EVENT KLIK (HANYA JIKA MODE INPUT AKTIF)
+            map.on('click', function (e) {
+                if (!isInputMode) return; // Jika saklar mati, abaikan klik
+
+                updateInputMarker(e.latlng.lat, e.latlng.lng);
+
+                // Kirim Koordinat ke C#
+                if (window.chrome && window.chrome.webview) {
+                    var data = { lat: e.latlng.lat, lng: e.latlng.lng };
+                    window.chrome.webview.postMessage(JSON.stringify(data));
+                }
+            });
+        }
+
+        // 2. SAKLAR MODE INPUT
+        function setInputMode(enable) {
+            isInputMode = enable;
+        }
+
+        // 3. FUNGSI UNTUK FORM INPUT
+        function setLocation(lat, lon) {
+            if (!map) return;
+            map.setView([lat, lon], 16); // Zoom in saat lokasi dipilih
+            updateInputMarker(lat, lon);
+        }
+
+        function updateInputMarker(lat, lon) {
+            if (inputMarker) map.removeLayer(inputMarker);
+
+            // Marker Input: Warna Merah, Z-Index Tinggi (Paling Depan)
+            inputMarker = L.marker([lat, lon], {
+                icon: createModernIcon(palette.red),
+                zIndexOffset: 2000
+            }).addTo(map);
+
+            inputMarker.bindPopup("<b>Lokasi Terpilih</b><br>Klik Simpan untuk menggunakan lokasi ini.").openPopup();
+        }
+
+        function removeInputMarker() {
+            if (inputMarker) {
+                map.removeLayer(inputMarker);
+                inputMarker = null;
+            }
+        }
+
+        // 4. FUNGSI UNTUK DASHBOARD (FORM MAP)
+        // Menerima parameter warna dan zIndex dari C#
+        function addMarker(lat, lon, title, desc, colorCodeFromCSharp, zIndex) {
+
+            // Logika Mapping Warna (Agar warna C# yang keras jadi lembut di peta)
+            var finalColor = palette.gray;
+
+            // Cek string warna dari C#
+            var c = colorCodeFromCSharp.toLowerCase();
+
+            if (c.includes('007bff') || c.includes('blue')) finalColor = palette.blue;      // Master TPS
+            else if (c.includes('e74c3c') || c.includes('red') || c.includes('ff0000')) finalColor = palette.red; // Laporan Masuk
+            else if (c.includes('28a745') || c.includes('green') || c.includes('2ecc71')) finalColor = palette.green; // Selesai
+            else if (c.includes('ffc107') || c.includes('yellow') || c.includes('gold')) finalColor = palette.yellow; // Proses
+            else finalColor = colorCodeFromCSharp; // Fallback kalau kode hex custom
+
+            var myIcon = createModernIcon(finalColor);
+
+            var marker = L.marker([lat, lon], {
+                icon: myIcon,
+                zIndexOffset: zIndex // Mengatur tumpukan (Master di belakang, Laporan di depan)
+            }).addTo(map);
+
+            // Popup dengan styling khusus
+            var popupContent = `<h4>${title}</h4><p>${desc}</p>`;
+            marker.bindPopup(popupContent, { className: 'custom-popup' });
+
+            markers.push(marker);
+        }
+
+        function clearMarkers() {
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+        }
+
+        // 5. GENERATOR ICON SVG MODERN (BENTUK TEARDROP)
+        // Tidak ada border hitam, warna solid + bayangan CSS
+        function createModernIcon(color) {
+            const svgString = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 43.62" width="36" height="49">
+                      <path d="M16,0C7.16,0,0,7.16,0,16c0,9.76,13.69,25.63,14.88,27a1.74,1.74,0,0,0,2.24,0C18.31,41.63,32,25.76,32,16,32,7.16,24.84,0,16,0Zm0,24a8,8,0,1,1,8-8A8,8,0,0,1,16,24Z" fill="${color}"/>
+                      <circle cx="16" cy="16" r="6" fill="white" fill-opacity="0.95"/>
+                    </svg>`;
+
+            return L.divIcon({
+                className: "modern-pin", // Class CSS untuk efek bayangan & hover
+                html: svgString,
+                iconSize: [36, 49],    // Ukuran Icon
+                iconAnchor: [18, 49],  // Titik tancap (Ujung bawah tengah)
+                popupAnchor: [0, -45]  // Posisi Popup (Di atas kepala pin)
+            });
+        }
+    </script>
+</body>
+</html>

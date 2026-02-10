@@ -32,6 +32,7 @@
             DataGridViewCellStyle dataGridViewCellStyle2 = new DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             panelSidebar = new Panel();
+            btnBukaMap = new FontAwesome.Sharp.IconButton();
             btnLogout = new FontAwesome.Sharp.IconButton();
             btnChatbot = new FontAwesome.Sharp.IconButton();
             btnExportPDF = new FontAwesome.Sharp.IconButton();
@@ -71,6 +72,7 @@
             // panelSidebar
             // 
             panelSidebar.BackColor = Color.FromArgb(33, 37, 41);
+            panelSidebar.Controls.Add(btnBukaMap);
             panelSidebar.Controls.Add(btnLogout);
             panelSidebar.Controls.Add(btnChatbot);
             panelSidebar.Controls.Add(btnExportPDF);
@@ -82,6 +84,29 @@
             panelSidebar.Name = "panelSidebar";
             panelSidebar.Size = new Size(260, 720);
             panelSidebar.TabIndex = 0;
+            // 
+            // btnBukaMap
+            // 
+            btnBukaMap.Dock = DockStyle.Top;
+            btnBukaMap.FlatAppearance.BorderSize = 0;
+            btnBukaMap.FlatStyle = FlatStyle.Flat;
+            btnBukaMap.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnBukaMap.ForeColor = Color.White;
+            btnBukaMap.IconChar = FontAwesome.Sharp.IconChar.Map;
+            btnBukaMap.IconColor = Color.White;
+            btnBukaMap.IconFont = FontAwesome.Sharp.IconFont.Auto;
+            btnBukaMap.IconSize = 24;
+            btnBukaMap.ImageAlign = ContentAlignment.MiddleLeft;
+            btnBukaMap.Location = new Point(0, 245);
+            btnBukaMap.Name = "btnBukaMap";
+            btnBukaMap.Padding = new Padding(25, 0, 0, 0);
+            btnBukaMap.Size = new Size(260, 55);
+            btnBukaMap.TabIndex = 5;
+            btnBukaMap.Text = "Maps";
+            btnBukaMap.TextAlign = ContentAlignment.MiddleLeft;
+            btnBukaMap.TextImageRelation = TextImageRelation.ImageBeforeText;
+            btnBukaMap.UseVisualStyleBackColor = true;
+            btnBukaMap.Click += btnBukaMap_Click;
             // 
             // btnLogout
             // 
@@ -413,6 +438,7 @@
             // 
             // btnDelete
             // 
+            btnDelete.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnDelete.BackColor = Color.FromArgb(220, 53, 69);
             btnDelete.FlatAppearance.BorderSize = 0;
             btnDelete.FlatStyle = FlatStyle.Flat;
@@ -433,6 +459,7 @@
             // 
             // btnEdit
             // 
+            btnEdit.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnEdit.BackColor = Color.FromArgb(255, 193, 7);
             btnEdit.FlatAppearance.BorderSize = 0;
             btnEdit.FlatStyle = FlatStyle.Flat;
@@ -453,6 +480,7 @@
             // 
             // btnAdd
             // 
+            btnAdd.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnAdd.BackColor = Color.FromArgb(46, 204, 113);
             btnAdd.FlatAppearance.BorderSize = 0;
             btnAdd.FlatStyle = FlatStyle.Flat;
@@ -528,5 +556,6 @@
         private DataGridViewTextBoxColumn colStatus;
         private FontAwesome.Sharp.IconButton btnLogout;
         private Label lblUserLogin;
+        private FontAwesome.Sharp.IconButton btnBukaMap;
     }
 }
