@@ -36,7 +36,7 @@
             btnChart = new FontAwesome.Sharp.IconButton();
             btnBukaMap = new FontAwesome.Sharp.IconButton();
             btnLogout = new FontAwesome.Sharp.IconButton();
-            btnChatbot = new FontAwesome.Sharp.IconButton();
+            btnFloatingChat = new FontAwesome.Sharp.IconButton();
             btnExportPDF = new FontAwesome.Sharp.IconButton();
             btnDashboard = new FontAwesome.Sharp.IconButton();
             btnDataSampah = new FontAwesome.Sharp.IconButton();
@@ -76,13 +76,14 @@
             // 
             panelSidebar.BackColor = Color.FromArgb(33, 37, 41);
             panelSidebar.Controls.Add(btnImportCSV);
+            panelSidebar.Controls.Add(btnExportPDF);
+            panelSidebar.Controls.Add(btnImportCSV);
             panelSidebar.Controls.Add(btnChart);
             panelSidebar.Controls.Add(btnBukaMap);
             panelSidebar.Controls.Add(btnLogout);
-            panelSidebar.Controls.Add(btnChatbot);
-            panelSidebar.Controls.Add(btnExportPDF);
-            panelSidebar.Controls.Add(btnDashboard);
+            
             panelSidebar.Controls.Add(btnDataSampah);
+            panelSidebar.Controls.Add(btnDashboard);
             panelSidebar.Controls.Add(panel1);
             panelSidebar.Dock = DockStyle.Left;
             panelSidebar.Location = new Point(0, 0);
@@ -162,7 +163,7 @@
             // 
             // btnLogout
             // 
-            btnLogout.BackColor = Color.FromArgb(33, 37, 41);
+            btnLogout.BackColor = Color.FromArgb(220, 53, 69); // Red
             btnLogout.Dock = DockStyle.Bottom;
             btnLogout.FlatAppearance.BorderSize = 0;
             btnLogout.FlatAppearance.MouseDownBackColor = Color.Maroon;
@@ -186,28 +187,30 @@
             btnLogout.UseVisualStyleBackColor = false;
             btnLogout.Click += btnLogout_Click;
             // 
-            // btnChatbot
+            // btnFloatingChat
             // 
-            btnChatbot.Dock = DockStyle.Top;
-            btnChatbot.FlatAppearance.BorderSize = 0;
-            btnChatbot.FlatStyle = FlatStyle.Flat;
-            btnChatbot.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnChatbot.ForeColor = Color.White;
-            btnChatbot.IconChar = FontAwesome.Sharp.IconChar.Robot;
-            btnChatbot.IconColor = Color.White;
-            btnChatbot.IconFont = FontAwesome.Sharp.IconFont.Auto;
-            btnChatbot.IconSize = 24;
-            btnChatbot.ImageAlign = ContentAlignment.MiddleLeft;
-            btnChatbot.Location = new Point(0, 190);
-            btnChatbot.Name = "btnChatbot";
-            btnChatbot.Padding = new Padding(25, 0, 0, 0);
-            btnChatbot.Size = new Size(260, 55);
-            btnChatbot.TabIndex = 3;
-            btnChatbot.Text = "Chat Assistant";
-            btnChatbot.TextAlign = ContentAlignment.MiddleLeft;
-            btnChatbot.TextImageRelation = TextImageRelation.ImageBeforeText;
-            btnChatbot.UseVisualStyleBackColor = true;
-            btnChatbot.Click += btnChatbot_Click;
+            btnFloatingChat.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            btnFloatingChat.BackColor = Color.FromArgb(16, 185, 129); // Green
+            btnFloatingChat.FlatAppearance.BorderSize = 0;
+            btnFloatingChat.FlatStyle = FlatStyle.Flat;
+            btnFloatingChat.IconChar = FontAwesome.Sharp.IconChar.CommentDots;
+            btnFloatingChat.IconColor = Color.White;
+            btnFloatingChat.IconFont = FontAwesome.Sharp.IconFont.Auto;
+            btnFloatingChat.IconSize = 32;
+            btnFloatingChat.Location = new Point(1180, 630);
+            btnFloatingChat.Name = "btnFloatingChat";
+            btnFloatingChat.Size = new Size(60, 60);
+            btnFloatingChat.TabIndex = 99;
+            btnFloatingChat.UseVisualStyleBackColor = false;
+            btnFloatingChat.Cursor = Cursors.Hand;
+            // Circular Region
+            System.Drawing.Drawing2D.GraphicsPath path = new System.Drawing.Drawing2D.GraphicsPath();
+            path.AddEllipse(0, 0, 60, 60);
+            btnFloatingChat.Region = new Region(path);
+            btnFloatingChat.Click += btnFloatingChat_Click;
+            // 
+            // btnChatbot (Removed)
+            // 
             // 
             // btnExportPDF
             // 
@@ -514,7 +517,7 @@
             // btnDelete
             // 
             btnDelete.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnDelete.BackColor = Color.FromArgb(220, 53, 69);
+            btnDelete.BackColor = Color.FromArgb(220, 53, 69); // Danger Red
             btnDelete.FlatAppearance.BorderSize = 0;
             btnDelete.FlatStyle = FlatStyle.Flat;
             btnDelete.Font = new Font("Segoe UI", 10.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
@@ -531,15 +534,17 @@
             btnDelete.TextImageRelation = TextImageRelation.ImageBeforeText;
             btnDelete.UseVisualStyleBackColor = false;
             btnDelete.Click += btnDelete_Click;
+            btnDelete.Cursor = Cursors.Hand;
+
             // 
             // btnEdit
             // 
             btnEdit.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnEdit.BackColor = Color.FromArgb(255, 193, 7);
+            btnEdit.BackColor = Color.FromArgb(255, 193, 7); // Warning Yellow
             btnEdit.FlatAppearance.BorderSize = 0;
             btnEdit.FlatStyle = FlatStyle.Flat;
             btnEdit.Font = new Font("Segoe UI", 10.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            btnEdit.ForeColor = Color.White;
+            btnEdit.ForeColor = Color.White; // White text on Yellow
             btnEdit.IconChar = FontAwesome.Sharp.IconChar.Pen;
             btnEdit.IconColor = Color.White;
             btnEdit.IconFont = FontAwesome.Sharp.IconFont.Auto;
@@ -552,16 +557,18 @@
             btnEdit.TextImageRelation = TextImageRelation.ImageBeforeText;
             btnEdit.UseVisualStyleBackColor = false;
             btnEdit.Click += btnEdit_Click;
+            btnEdit.Cursor = Cursors.Hand;
+
             // 
             // btnAdd
             // 
             btnAdd.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnAdd.BackColor = Color.FromArgb(46, 204, 113);
+            btnAdd.BackColor = Color.FromArgb(16, 185, 129); // Emerald Green
             btnAdd.FlatAppearance.BorderSize = 0;
             btnAdd.FlatStyle = FlatStyle.Flat;
             btnAdd.Font = new Font("Segoe UI", 10.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
             btnAdd.ForeColor = Color.White;
-            btnAdd.IconChar = FontAwesome.Sharp.IconChar.Add;
+            btnAdd.IconChar = FontAwesome.Sharp.IconChar.Plus;
             btnAdd.IconColor = Color.White;
             btnAdd.IconFont = FontAwesome.Sharp.IconFont.Auto;
             btnAdd.IconSize = 18;
@@ -573,6 +580,7 @@
             btnAdd.TextImageRelation = TextImageRelation.ImageBeforeText;
             btnAdd.UseVisualStyleBackColor = false;
             btnAdd.Click += btnAdd_Click;
+            btnAdd.Cursor = Cursors.Hand;
             // 
             // MainForm
             // 
@@ -581,6 +589,7 @@
             ClientSize = new Size(1280, 720);
             Controls.Add(panelContent);
             Controls.Add(panelHeader);
+            Controls.Add(btnFloatingChat);
             Controls.Add(panelSidebar);
             Font = new Font("Century Gothic", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
             FormBorderStyle = FormBorderStyle.None;
@@ -611,7 +620,7 @@
         private Label label1;
         private FontAwesome.Sharp.IconPictureBox iconPictureBox1;
         private FontAwesome.Sharp.IconButton btnDataSampah;
-        private FontAwesome.Sharp.IconButton btnChatbot;
+        private FontAwesome.Sharp.IconButton btnFloatingChat;
         private FontAwesome.Sharp.IconButton btnExportPDF;
         private Label lblTitle;
         private FontAwesome.Sharp.IconButton btnClose;

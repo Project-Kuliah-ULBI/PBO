@@ -88,18 +88,44 @@ namespace SiJabarApp
 
         private void SetupUI()
         {
+            this.BackColor = StyleHelper.BackgroundColor;
+
             if (comboWilayah != null)
             {
                 comboWilayah.DropDownStyle = ComboBoxStyle.DropDown; // Bisa ngetik
                 comboWilayah.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
                 comboWilayah.AutoCompleteSource = AutoCompleteSource.ListItems;
+                StyleHelper.StyleInput(comboWilayah);
             }
             // Pastikan item Status/Jenis ada
-            if (comboStatus != null && comboStatus.Items.Count == 0)
-                comboStatus.Items.AddRange(new object[] { "Masuk", "Dipilah", "Daur Ulang", "Selesai" });
+            if (comboStatus != null)
+            {
+                if(comboStatus.Items.Count == 0)
+                    comboStatus.Items.AddRange(new object[] { "Masuk", "Dipilah", "Daur Ulang", "Selesai" });
+                StyleHelper.StyleInput(comboStatus);
+            }
 
-            if (comboJenis != null && comboJenis.Items.Count == 0)
-                comboJenis.Items.AddRange(new object[] { "Organik", "Anorganik", "B3", "Campuran" });
+            if (comboJenis != null)
+            {
+                if(comboJenis.Items.Count == 0)
+                    comboJenis.Items.AddRange(new object[] { "Organik", "Anorganik", "B3", "Campuran" });
+                StyleHelper.StyleInput(comboJenis);
+            }
+
+            // Apply styles to other inputs
+            if (txtLatitude != null) StyleHelper.StyleInput(txtLatitude);
+            if (txtLongitude != null) StyleHelper.StyleInput(txtLongitude);
+            if (txtKeterangan != null) StyleHelper.StyleInput(txtKeterangan);
+            if (numBerat != null) StyleHelper.StyleInput(numBerat);
+
+            // Apply styles to buttons
+            if (btnSimpan != null) StyleHelper.StyleButton(btnSimpan, StyleHelper.PrimaryColor, Color.White);
+            if (btnReset != null) StyleHelper.StyleSecondaryButton(btnReset);
+            if (btnBatal != null) StyleHelper.StyleButton(btnBatal, StyleHelper.DangerColor, Color.White);
+            
+            // Header
+            Control pnlHeader = this.Controls.Find("panelHeader", true).Length > 0 ? this.Controls.Find("panelHeader", true)[0] : null;
+            if (pnlHeader != null) pnlHeader.BackColor = Color.White;
         }
 
         // --- PENTING: LOGIKA PEMBATASAN ROLE ---

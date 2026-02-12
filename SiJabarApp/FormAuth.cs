@@ -41,9 +41,9 @@ namespace SiJabarApp
         private bool isShowRegister = false;
         private int slideSpeed = 50;
 
-        // --- TEMA WARNA HIJAU (LAWN GREEN) ---
-        private Color primaryColor = Color.FromArgb(40, 180, 99);
-        private Color secondaryColor = Color.FromArgb(124, 252, 0);
+        // --- TEMA WARNA HIJAU (EMERALD GREEN via StyleHelper) ---
+        private Color primaryColor = StyleHelper.PrimaryColor;
+        private Color secondaryColor = StyleHelper.SecondaryColor;
         private Color inputBgColor = Color.FromArgb(240, 240, 240);
 
         // --- UKURAN FORM BESAR ---

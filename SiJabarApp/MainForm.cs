@@ -51,6 +51,10 @@ namespace SiJabarApp
             this.activeRole = "Masyarakat";
             ConnectToMongoDB();
             SetupStyling();
+            
+            // Ensure Floating Button is on Top
+            if(btnFloatingChat != null) btnFloatingChat.BringToFront();
+            if(btnFloatingChat != null) btnFloatingChat.BringToFront();
         }
 
         // =============================================================
@@ -68,19 +72,140 @@ namespace SiJabarApp
             // 2. Setup Awal
             ConnectToMongoDB();
             SetupStyling();
-
+            
             // 3. ATUR HAK AKSES 
             ApplyRolePermissions();
+            
+            // 4. Init Views
+            SetupDashboardControl(); 
 
-            // 4. Load Data
-            LoadData();
+            // 5. Default View: Dashboard
+            ShowDashboard();
 
-            // 5. Set Label User
+            // 6. Set Label User
             if (lblUserLogin != null)
             {
                 lblUserLogin.Text = $"Halo, {activeUserName} ({activeRole})";
             }
+            
+            if(btnFloatingChat != null) btnFloatingChat.BringToFront();
         }
+
+        // --- CONTROL DASHBOARD & VIEWS ---
+        private DashboardControl dashboardControl;
+        private MapControl mapControl;
+        private ChartControl chartControl;
+        private FileIOControl fileIOControl; // NEW
+
+        // ... existing code ...
+
+        private void SetupDashboardControl()
+        {
+            // 1. Init Dashboard
+            dashboardControl = new DashboardControl();
+            dashboardControl.Dock = DockStyle.Fill;
+            
+            // 2. Init Map
+            mapControl = new MapControl();
+            mapControl.Dock = DockStyle.Fill;
+            mapControl.Visible = false;
+
+            // 3. Init Chart
+            chartControl = new ChartControl();
+            chartControl.Dock = DockStyle.Fill;
+            chartControl.Visible = false;
+            
+            // 4. Init FileIO (Import/Export)
+            fileIOControl = new FileIOControl();
+            fileIOControl.Dock = DockStyle.Fill;
+            fileIOControl.Visible = false;
+            fileIOControl.OnExportPdfRequested += (s, e) => PerformPdfExport(); // Handle Export Event
+            fileIOControl.OnDataImported += (s, e) => MessageBox.Show("Data baru telah ditambahkan.");
+            
+            // Masukkan ke Panel Content
+            if(panelContent != null)
+            {
+                panelContent.Controls.Add(dashboardControl);
+                panelContent.Controls.Add(mapControl);
+                panelContent.Controls.Add(chartControl);
+                panelContent.Controls.Add(fileIOControl);
+            }
+        }
+
+        // --- NAVIGATION METHODS (SWITCH VIEW) ---
+        private void SwitchView(Control viewToShow)
+        {
+            // Sembunyikan semua view dulu
+            if (dashboardControl != null) dashboardControl.Visible = false;
+            if (mapControl != null) mapControl.Visible = false;
+            if (chartControl != null) chartControl.Visible = false;
+            if (fileIOControl != null) fileIOControl.Visible = false;
+            if (panel3 != null) panel3.Visible = false; // Panel Data Sampah
+            if (panel2 != null) panel2.Visible = false; // Panel Header Data Sampah
+
+            // Tampilkan View yang diminta
+            if (viewToShow != null)
+            {
+                viewToShow.Visible = true;
+                viewToShow.BringToFront();
+            }
+        }
+
+        private void ShowDashboard()
+        {
+            SwitchView(dashboardControl);
+            dashboardControl.ReloadData();
+            if(lblTitle != null) lblTitle.Text = "DASHBOARD";
+        }
+        
+        private void ShowFileIO()
+        {
+            SwitchView(fileIOControl);
+            if(lblTitle != null) lblTitle.Text = "IMPORT & EXPORT";
+        }
+
+        private void ShowDataSampah()
+        {
+            // Data Sampah masih pakai Panel3 & Panel2 (Legacy)
+            if (dashboardControl != null) dashboardControl.Visible = false;
+            if (mapControl != null) mapControl.Visible = false;
+            if (chartControl != null) chartControl.Visible = false;
+            if (fileIOControl != null) fileIOControl.Visible = false;
+
+            if (panel3 != null) panel3.Visible = true;
+            if (panel2 != null) panel2.Visible = true;
+            
+            if(lblTitle != null) lblTitle.Text = "DATA SAMPAH";
+            LoadData(); 
+        }
+
+        private void ShowMap()
+        {
+            SwitchView(mapControl);
+            if(lblTitle != null) lblTitle.Text = "PETA SEBARAN";
+        }
+
+        private void ShowChart()
+        {
+            SwitchView(chartControl);
+            if(chartControl != null) chartControl.LoadDataToChart(); // Refresh Chart Data
+            if(lblTitle != null) lblTitle.Text = "STATISTIK SAMPAH";
+        }
+
+        private void btnDataSampah_Click(object sender, EventArgs e) 
+        {
+            ActivateButton(sender);
+            ShowDataSampah();
+        }
+
+        private void btnDashboard_Click(object sender, EventArgs e) 
+        {
+             ActivateButton(sender);
+             ShowDashboard();
+        }
+
+        // ... existing code ...
+
 
         // --- 1. KONEKSI DATABASE ---
         private void ConnectToMongoDB()
@@ -120,37 +245,108 @@ namespace SiJabarApp
             }
         }
 
-        // --- 3. STYLING TABEL ---
+        // --- 3. STYLING TABEL & UI MODERN ---
         private void SetupStyling()
         {
-            if (gridSampah == null) return;
+            // 1. Setup DataGridView
+            if (gridSampah != null)
+            {
+                StyleHelper.StyleGridView(gridSampah);
 
-            gridSampah.EnableHeadersVisualStyles = false;
-            gridSampah.ColumnHeadersDefaultCellStyle.BackColor = Color.White;
-            gridSampah.ColumnHeadersDefaultCellStyle.ForeColor = Color.Black;
-            gridSampah.ColumnHeadersDefaultCellStyle.Font = new Font("Century Gothic", 9, FontStyle.Bold);
-            gridSampah.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            gridSampah.ColumnHeadersHeight = 50;
+                // DEFINISI KOLOM
+                gridSampah.Columns.Clear();
+                gridSampah.Columns.Add("colId", "ID");
+                gridSampah.Columns["colId"].Visible = false;
 
-            gridSampah.DefaultCellStyle.Font = new Font("Century Gothic", 9);
-            gridSampah.RowTemplate.Height = 45;
-            gridSampah.AllowUserToAddRows = false;
+                gridSampah.Columns.Add("colWilayah", "Wilayah");
+                gridSampah.Columns.Add("colJenis", "Jenis");
+                gridSampah.Columns.Add("colBerat", "Berat (Kg)");
+                gridSampah.Columns.Add("colStatus", "Status");
+                gridSampah.Columns.Add("colTanggal", "Tanggal");
+                gridSampah.Columns.Add("colJadwal", "Jadwal Kirim");
+                gridSampah.Columns.Add("colKet", "Keterangan");
 
-            // DEFINISI KOLOM
-            gridSampah.Columns.Clear();
-            gridSampah.Columns.Add("colId", "ID");
-            gridSampah.Columns["colId"].Visible = false;
+                gridSampah.Columns["colWilayah"].Width = 150;
+                gridSampah.Columns["colKet"].Width = 200;
+                gridSampah.Columns["colKet"].Width = 200;
+                gridSampah.Columns["colKet"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
 
-            gridSampah.Columns.Add("colWilayah", "Wilayah");
-            gridSampah.Columns.Add("colJenis", "Jenis");
-            gridSampah.Columns.Add("colBerat", "Berat (Kg)");
-            gridSampah.Columns.Add("colStatus", "Status");
-            gridSampah.Columns.Add("colTanggal", "Tgl Lapor");
-            gridSampah.Columns.Add("colJadwal", "Jadwal Angkut");
-            gridSampah.Columns.Add("colKet", "Keterangan");
+                // --- ADVANCED STYLING ---
+                gridSampah.EnableHeadersVisualStyles = false; // Wajib agar warna header berubah
+                gridSampah.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(16, 185, 129); // Emerald Green
+                gridSampah.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+                gridSampah.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+                gridSampah.ColumnHeadersHeight = 40;
+                
+                gridSampah.DefaultCellStyle.Font = new Font("Segoe UI", 10);
+                gridSampah.DefaultCellStyle.SelectionBackColor = Color.FromArgb(230, 240, 255);
+                gridSampah.DefaultCellStyle.SelectionForeColor = Color.Black;
+                gridSampah.RowTemplate.Height = 35; // Lebih lega
+                gridSampah.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(248, 249, 250);
+                
+                gridSampah.BorderStyle = BorderStyle.None;
+                gridSampah.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+                gridSampah.GridColor = Color.FromArgb(230, 230, 230);
+            }
 
-            gridSampah.Columns["colWilayah"].Width = 150;
-            gridSampah.Columns["colKet"].Width = 200;
+            // 2. Setup Form & Buttons
+            this.BackColor = StyleHelper.BackgroundColor;
+            ApplyModernStyles();
+            if(btnDashboard != null) ActivateButton(btnDashboard); // Default Active
+        }
+
+        // --- NEW: SIDEBAR ACTIVE STATE HELPER ---
+        private void ActivateButton(object btnSender)
+        {
+            if (btnSender == null) return;
+
+            // 1. Reset Semua Tombol ke Default (Dark)
+            DisableButton(btnDashboard);
+            DisableButton(btnDataSampah);
+            DisableButton(btnExportPDF);
+            DisableButton(btnBukaMap);
+            DisableButton(btnChart);
+            DisableButton(btnImportCSV);
+
+            // 2. Highlight Tombol Aktif
+            if (btnSender is FontAwesome.Sharp.IconButton currentBtn)
+            {
+                currentBtn.BackColor = Color.FromArgb(45, 50, 56); // Lighter Dark
+                currentBtn.ForeColor = Color.White;
+                currentBtn.IconColor = Color.White;
+                // Optional: Add left border visual if desired
+            }
+        }
+
+        private void DisableButton(FontAwesome.Sharp.IconButton btn)
+        {
+            if (btn == null) return;
+            btn.BackColor = Color.FromArgb(33, 37, 41); // Default Sidebar Color
+            btn.ForeColor = Color.White;
+            btn.IconColor = Color.White;
+        }
+
+        private void ApplyModernStyles()
+        {
+            // Header Panel
+            Control pnlHeader = this.Controls.Find("panelHeader", true).Length > 0 ? this.Controls.Find("panelHeader", true)[0] : null;
+            if (pnlHeader != null) pnlHeader.BackColor = Color.White;
+
+            // Style Tombol CRUD
+            if(btnAdd != null) StyleHelper.StyleButton(btnAdd, StyleHelper.PrimaryColor, Color.White);
+            if(btnEdit != null) 
+            {
+                StyleHelper.StyleButton(btnEdit, StyleHelper.WarningColor, Color.Black); // Force Yellow
+                btnEdit.BackColor = StyleHelper.WarningColor; // Double assurance
+            }
+            if(btnDelete != null) StyleHelper.StyleButton(btnDelete, StyleHelper.DangerColor, Color.White);
+            
+            // Logout Button (Red) - Already set in Designer but enforce here
+            if(btnLogout != null) 
+            {
+                btnLogout.BackColor = Color.FromArgb(220, 53, 69);
+                btnLogout.ForeColor = Color.White;
+            }
         }
 
         // --- 4. LOAD DATA (SESUAI ROLE) ---
@@ -254,69 +450,14 @@ namespace SiJabarApp
 
         private void btnBukaMap_Click(object sender, EventArgs e)
         {
-            FormMap mapForm = new FormMap(activeUserId);
-            mapForm.Show();
+            ActivateButton(sender);
+            ShowMap();
         }
 
         // ==========================================================
         // FITUR PDF
         // ==========================================================
-        private void btnExportPDF_Click(object sender, EventArgs e)
-        {
-            if (gridSampah.Rows.Count == 0)
-            {
-                MessageBox.Show("Tidak ada data!", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
 
-            SaveFileDialog sfd = new SaveFileDialog();
-            sfd.Filter = "PDF Files|*.pdf";
-            sfd.FileName = $"Laporan Sampah - {activeUserName}.pdf";
-
-            if (sfd.ShowDialog() == DialogResult.OK)
-            {
-                try
-                {
-                    string fontPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), "arial.ttf");
-                    PdfFont fontArial = PdfFontFactory.CreateFont(fontPath, PdfEncodings.IDENTITY_H);
-
-                    using (PdfWriter writer = new PdfWriter(sfd.FileName))
-                    using (PdfDocument pdf = new PdfDocument(writer))
-                    using (Document doc = new Document(pdf))
-                    {
-                        doc.SetFont(fontArial);
-                        pdf.SetDefaultPageSize(iText.Kernel.Geom.PageSize.A4.Rotate());
-
-                        doc.Add(new Paragraph("LAPORAN DATA SAMPAH JAWA BARAT").SetTextAlignment(TextAlignment.CENTER).SetFontSize(18));
-                        doc.Add(new Paragraph($"User: {activeUserName} ({activeRole}) | {DateTime.Now}").SetTextAlignment(TextAlignment.CENTER).SetFontSize(10).SetMarginBottom(20));
-
-                        float[] colWidths = { 2, 2, 1, 2, 2, 2, 3 };
-                        Table table = new Table(UnitValue.CreatePercentArray(colWidths)).SetWidth(UnitValue.CreatePercentValue(100));
-
-                        string[] headers = { "Wilayah", "Jenis", "Berat", "Status", "Tgl Lapor", "Jadwal", "Keterangan" };
-                        foreach (string h in headers)
-                            table.AddHeaderCell(new Cell().Add(new Paragraph(h)).SetBackgroundColor(iText.Kernel.Colors.ColorConstants.LIGHT_GRAY).SetTextAlignment(TextAlignment.CENTER).SetFontSize(9));
-
-                        foreach (DataGridViewRow row in gridSampah.Rows)
-                        {
-                            if (row.IsNewRow) continue;
-                            string GetVal(int idx) => row.Cells[idx].Value?.ToString() ?? "-";
-
-                            table.AddCell(new Paragraph(GetVal(1)).SetFontSize(9));
-                            table.AddCell(new Paragraph(GetVal(2)).SetFontSize(9));
-                            table.AddCell(new Paragraph(GetVal(3)).SetFontSize(9));
-                            table.AddCell(new Paragraph(GetVal(4)).SetFontSize(9));
-                            table.AddCell(new Paragraph(GetVal(5)).SetFontSize(9));
-                            table.AddCell(new Paragraph(GetVal(6)).SetFontSize(9));
-                            table.AddCell(new Paragraph(GetVal(7)).SetFontSize(9));
-                        }
-                        doc.Add(table);
-                    }
-                    MessageBox.Show("PDF Berhasil Disimpan!");
-                }
-                catch (Exception ex) { MessageBox.Show("Error Export: " + ex.Message); }
-            }
-        }
 
         // WINDOW CONTROL & UTILS
         private void btnClose_Click(object sender, EventArgs e) => Application.Exit();
@@ -330,16 +471,19 @@ namespace SiJabarApp
             SendMessage(this.Handle, 0x112, 0xf012, 0);
         }
 
-        private void btnDataSampah_Click(object sender, EventArgs e) => LoadData();
+
 
         // --- CHATBOT ---
-        private void btnChatbot_Click(object sender, EventArgs e)
+        // --- CHATBOT (FLOATING) ---
+        private void btnFloatingChat_Click(object sender, EventArgs e)
         {
             if (chatbotPopup == null || chatbotPopup.IsDisposed)
             {
                 chatbotPopup = new Chatbot(activeUserId);
-                int x = this.Location.X + this.Width - chatbotPopup.Width - 20;
-                int y = this.Location.Y + this.Height - chatbotPopup.Height - 20;
+                
+                // Position above the floating button (Bottom Right)
+                int x = this.Location.X + this.Width - chatbotPopup.Width - 80;
+                int y = this.Location.Y + this.Height - chatbotPopup.Height - 80;
 
                 chatbotPopup.StartPosition = FormStartPosition.Manual;
                 chatbotPopup.Location = new Point(x, y);
@@ -355,47 +499,113 @@ namespace SiJabarApp
 
         private void btnChart_Click(object sender, EventArgs e)
         {
-            // Membuka form chart sebagai dialog box
-            FormChart frm = new FormChart();
-            frm.ShowDialog();
+            ActivateButton(sender);
+            ShowChart();
+        }
+
+        private void ShowImportPage()
+        {
+            SwitchView(fileIOControl);
+            fileIOControl.ShowImportMode();
+            if(lblTitle != null) lblTitle.Text = "IMPORT CSV";
+        }
+
+        private void ShowExportPage()
+        {
+            SwitchView(fileIOControl);
+            fileIOControl.ShowExportMode();
+            if(lblTitle != null) lblTitle.Text = "EXPORT PDF";
         }
 
         private async void btnImportCSV_Click(object sender, EventArgs e)
         {
-            OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Filter = "CSV Files (*.csv)|*.csv";
+            ActivateButton(sender);
+            ShowImportPage();
+        }
 
-            if (ofd.ShowDialog() == DialogResult.OK)
+        private async void btnExportPDF_Click(object sender, EventArgs e)
+        {
+            ActivateButton(sender);
+            ShowExportPage();
+        }
+
+        private void PerformPdfExport()
+        {
+            if (gridSampah == null || gridSampah.Rows.Count == 0)
+            {
+                MessageBox.Show("Tidak ada data untuk diekspor!", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            SaveFileDialog sfd = new SaveFileDialog();
+            sfd.Filter = "PDF Files|*.pdf";
+            sfd.FileName = $"Laporan Sampah - {activeUserName} - {DateTime.Now:yyyyMMdd}.pdf";
+
+            if (sfd.ShowDialog() == DialogResult.OK)
             {
                 try
                 {
-                    this.Cursor = Cursors.WaitCursor;
-                    btnImportCSV.Enabled = false;
-                    btnImportCSV.Text = "Processing...";
+                    string fontPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), "arial.ttf");
+                    PdfFont fontText = File.Exists(fontPath) 
+                        ? PdfFontFactory.CreateFont(fontPath, PdfEncodings.IDENTITY_H)
+                        : PdfFontFactory.CreateFont(iText.IO.Font.Constants.StandardFonts.HELVETICA);
 
-                    var ingestionHelper = new SiJabarApp.helper.CsvIngestionHelper();
-                    await ingestionHelper.ProcessOpenDataCsv(ofd.FileName);
+                    using (PdfWriter writer = new PdfWriter(sfd.FileName))
+                    using (PdfDocument pdf = new PdfDocument(writer))
+                    using (Document doc = new Document(pdf))
+                    {
+                        doc.SetFont(fontText);
+                        pdf.SetDefaultPageSize(iText.Kernel.Geom.PageSize.A4.Rotate());
 
-                    MessageBox.Show("Data CSV berhasil diproses dan dimasukkan ke database RAG!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        doc.Add(new Paragraph("LAPORAN DATA SAMPAH JAWA BARAT").SetTextAlignment(TextAlignment.CENTER).SetFontSize(18));
+                        doc.Add(new Paragraph($"User: {activeUserName} ({activeRole}) | {DateTime.Now:dd MMMM yyyy HH:mm}").SetTextAlignment(TextAlignment.CENTER).SetFontSize(10).SetMarginBottom(20));
+
+                        float[] colWidths = { 2, 2, 1, 2, 2, 2, 3 };
+                        Table table = new Table(UnitValue.CreatePercentArray(colWidths)).SetWidth(UnitValue.CreatePercentValue(100));
+
+                        string[] headers = { "Wilayah", "Jenis", "Berat", "Status", "Tgl Lapor", "Jadwal", "Keterangan" };
+                        foreach (string h in headers)
+                        {
+                            Cell cell = new Cell().Add(new Paragraph(h));
+                            cell.SetBackgroundColor(iText.Kernel.Colors.ColorConstants.LIGHT_GRAY);
+                            cell.SetTextAlignment(TextAlignment.CENTER);
+                            cell.SetFontSize(9);
+                            table.AddHeaderCell(cell);
+                        }
+
+                        foreach (DataGridViewRow row in gridSampah.Rows)
+                        {
+                            if (row.IsNewRow) continue;
+                            string GetVal(string colName) => row.Cells[colName].Value?.ToString() ?? "-";
+
+                            table.AddCell(new Paragraph(GetVal("colWilayah")).SetFontSize(9));
+                            table.AddCell(new Paragraph(GetVal("colJenis")).SetFontSize(9));
+                            table.AddCell(new Paragraph(GetVal("colBerat")).SetFontSize(9));
+                            table.AddCell(new Paragraph(GetVal("colStatus")).SetFontSize(9));
+                            table.AddCell(new Paragraph(GetVal("colTanggal")).SetFontSize(9));
+                            table.AddCell(new Paragraph(GetVal("colJadwal")).SetFontSize(9));
+                            table.AddCell(new Paragraph(GetVal("colKet")).SetFontSize(9));
+                        }
+
+                        doc.Add(table);
+                    }
+
+                    MessageBox.Show("PDF Berhasil Diekspor!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    
+                    try {
+                         var p = new System.Diagnostics.Process();
+                         p.StartInfo = new System.Diagnostics.ProcessStartInfo(sfd.FileName) { UseShellExecute = true };
+                         p.Start();
+                    } catch { }
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Gagal mengimpor data: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-                finally
-                {
-                    this.Cursor = Cursors.Default;
-                    btnImportCSV.Enabled = true;
-                    btnImportCSV.Text = "Import RAG Data";
+                    MessageBox.Show("Error Export PDF: " + ex.Message);
                 }
             }
         }
 
-        private void btnDashboard_Click(object sender, EventArgs e)
-        {
-            FormDashboard frm = new FormDashboard();
-            frm.ShowDialog();
-        }
+
 
         private void btnLogout_Click(object sender, EventArgs e)
         {
