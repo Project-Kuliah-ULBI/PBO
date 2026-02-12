@@ -22,6 +22,8 @@ namespace SiJabarApp
         private IMongoCollection<SampahModel> collectionSampah;
         private IMongoCollection<MasterLokasiModel> collectionMaster;
 
+        public string UserRole { get; set; } // NEW: Role Property
+
         // --- MAP COMPONENT ---
         private WebView2 webViewMap;
         private bool isMapReady = false;
@@ -75,7 +77,8 @@ namespace SiJabarApp
         {
             try
             {
-                var client = new MongoClient("mongodb://localhost:27017");
+                // var client = new MongoClient("mongodb://localhost:27017");
+                var client = new MongoClient("mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB");
                 var db = client.GetDatabase("SiJabarDB");
                 collectionSampah = db.GetCollection<SampahModel>("Sampah");
                 collectionMaster = db.GetCollection<MasterLokasiModel>("MasterLokasi");
@@ -130,11 +133,32 @@ namespace SiJabarApp
             int cardWidth = (totalWidth - (3 * gap)) / 4;
             int cardHeight = 160; // Increased height from 140
 
+            // Calculate real data for cards
+            double totalBerat = allData.Sum(x => x.Berat);
+            int jadwalCount = allData.Count(x => x.JadwalAngkut >= DateTime.Today);
+            int totalTPS = allTPS.Count;
+
+            // Calculate "Tempat Sampah Penuh": TPS limit = 1 ton (1000 kg), TPA limit = 20 ton (20000 kg)
+            int tpsPenuh = 0;
+            foreach (var tps in allTPS)
+            {
+                // Sum weight of all reports linked to this location (match by Wilayah name)
+                double beratDiLokasi = allData
+                    .Where(x => x.Wilayah != null && x.Wilayah.Equals(tps.NamaTPS, StringComparison.OrdinalIgnoreCase))
+                    .Sum(x => x.Berat);
+
+                // Determine limit based on name: TPA = 20 ton, TPS = 1 ton
+                bool isTPA = tps.NamaTPS != null && tps.NamaTPS.ToUpper().Contains("TPA");
+                double batasKg = isTPA ? 20000 : 1000;
+
+                if (beratDiLokasi >= batasKg) tpsPenuh++;
+            }
+
             var stats = new[] {
-                new { Title = "Total Sampah Terkumpul", Val = $"{allData.Sum(x=>x.Berat):N0} kg", Icon = "⚖️", Bg=primaryLight, Fg=primary, Trend="+12%" },
-                new { Title = "Jadwal Pengangkutan", Val = allData.Count(x=>x.JadwalAngkut >= DateTime.Today).ToString(), Icon = "🚚", Bg=secondaryLight, Fg=secondary, Trend="48" },
-                new { Title = "Tempat Sampah Aktif", Val = allTPS.Count.ToString(), Icon = "🗑️", Bg=warningLight, Fg=warning, Trend="156" },
-                new { Title = "Tempat Sampah Penuh", Val = "12", Icon = "⚠️", Bg=dangerLight, Fg=danger, Trend="! Low" } // Dummy logic for "Full"
+                new { Title = "Total Sampah Terkumpul", Val = $"{totalBerat:N0} kg", Icon = "⚖️", Bg=primaryLight, Fg=primary, Trend="" },
+                new { Title = "Jadwal Pengangkutan", Val = jadwalCount.ToString(), Icon = "🚚", Bg=secondaryLight, Fg=secondary, Trend="" },
+                new { Title = "Tempat Sampah Aktif", Val = totalTPS.ToString(), Icon = "🗑️", Bg=warningLight, Fg=warning, Trend="" },
+                new { Title = "Tempat Sampah Penuh", Val = tpsPenuh.ToString(), Icon = "⚠️", Bg=dangerLight, Fg=danger, Trend="" }
             };
 
             for(int i=0; i<4; i++)
@@ -166,23 +190,28 @@ namespace SiJabarApp
             currentY += 400 + gap;
 
             // ============================================================
-            // 4. CHARTS ROW
+            // 4. CHARTS ROW (HIDDEN FOR MASYARAKAT)
             // ============================================================
             int chartHeight = 350;
             int widthLeft = (int)(totalWidth * 0.65) - gap/2;
             int widthRight = totalWidth - widthLeft - gap;
 
-            // -- CHART 1: Statistik Mingguan (Bar) --
-            Panel chart1 = CreateCardWithHeader("Statistik Sampah", new Point(0, currentY), new Size(widthLeft, chartHeight));
-            DrawBarChart(chart1, allData);
-            panelMain.Controls.Add(chart1);
+            if (UserRole != "Masyarakat")
+            {
+                // -- CHART 1: Statistik Mingguan (Bar) --
 
-            // -- CHART 2: Komposisi Sampah (Pie) --
-            Panel chart2 = CreateCardWithHeader("Komposisi Sampah", new Point(widthLeft + gap, currentY), new Size(widthRight, chartHeight));
-            DrawPieChart(chart2, allData);
-            panelMain.Controls.Add(chart2);
+                // -- CHART 1: Statistik Mingguan (Bar) --
+                Panel chart1 = CreateCardWithHeader("Statistik Sampah", new Point(0, currentY), new Size(widthLeft, chartHeight));
+                DrawBarChart(chart1, allData);
+                panelMain.Controls.Add(chart1);
 
-            currentY += chartHeight + gap;
+                // -- CHART 2: Komposisi Sampah (Pie) --
+                Panel chart2 = CreateCardWithHeader("Komposisi Sampah", new Point(widthLeft + gap, currentY), new Size(widthRight, chartHeight));
+                DrawPieChart(chart2, allData);
+                panelMain.Controls.Add(chart2);
+
+                currentY += chartHeight + gap;
+            }
 
             // ============================================================
             // 5. BOTTOM ROW (Table & Activity)
@@ -258,20 +287,23 @@ namespace SiJabarApp
                 ForeColor = textGray
             };
 
-            // Trend Label (Top Right)
-            Label lblTrend = new Label {
-                Text = trend,
-                Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                Location = new Point(size.Width - 60, 20),
-                AutoSize = true,
-                ForeColor = fg,
-                BackColor = bg
-            };
+            // Trend Label (Top Right) - only show if not empty
+            if (!string.IsNullOrEmpty(trend))
+            {
+                Label lblTrend = new Label {
+                    Text = trend,
+                    Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                    Location = new Point(size.Width - 60, 20),
+                    AutoSize = true,
+                    ForeColor = fg,
+                    BackColor = bg
+                };
+                p.Controls.Add(lblTrend);
+            }
 
             p.Controls.Add(lblIcon);
             p.Controls.Add(lblVal);
             p.Controls.Add(lblTitle);
-            p.Controls.Add(lblTrend);
 
             p.Paint += (s, e) => ControlPaint.DrawBorder(e.Graphics, p.ClientRectangle, Color.FromArgb(229, 231, 235), ButtonBorderStyle.Solid);
             
@@ -452,8 +484,11 @@ namespace SiJabarApp
                  Label ico = new Label { Text = "📝", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, Font = new Font("Segoe UI Emoji", 12) };
                  iconBox.Controls.Add(ico);
                  
-                 Label lblTitle = new Label { Text = "Laporan Baru", Font = new Font("Segoe UI", 9, FontStyle.Bold), Location = new Point(70, y), AutoSize = true };
-                 Label lblDesc = new Label { Text = $"Input dari {item.Wilayah}", Font = new Font("Segoe UI", 9), ForeColor = textGray, Location = new Point(70, y+20), AutoSize = true };
+                  string titleText = (UserRole == "Masyarakat") ? item.Wilayah : "Laporan Baru";
+                  Label lblTitle = new Label { Text = titleText, Font = new Font("Segoe UI", 9, FontStyle.Bold), Location = new Point(70, y), AutoSize = true };
+                  
+                  string descText = (UserRole == "Masyarakat") ? $"Status: {item.Status}" : $"Input dari {item.Wilayah}";
+                  Label lblDesc = new Label { Text = descText, Font = new Font("Segoe UI", 9), ForeColor = textGray, Location = new Point(70, y+20), AutoSize = true };
                  Label lblTime = new Label { Text = item.Tanggal.ToString("HH:mm"), Font = new Font("Segoe UI", 8), ForeColor = textGray, Location = new Point(content.Width - 60, y), AutoSize = true };
                  
                  content.Controls.Add(iconBox);
@@ -476,7 +511,8 @@ namespace SiJabarApp
                 string htmlPath = Path.Combine(Directory.GetCurrentDirectory(), "map.html");
                 if (File.Exists(htmlPath))
                 {
-                    webViewMap.Source = new Uri(htmlPath);
+                    var fileUri = new Uri(htmlPath).AbsoluteUri + "?v=" + DateTime.Now.Ticks;
+                    webViewMap.Source = new Uri(fileUri);
                     webViewMap.NavigationCompleted += WebViewMap_NavigationCompleted;
                 }
             } catch (Exception) { /* Handle or ignore if WebView2 not present */ }
@@ -487,8 +523,9 @@ namespace SiJabarApp
             if (e.IsSuccess)
             {
                 isMapReady = true;
-                // Init Map (Bandung)
+                // Init Map (Bandung) - View Only
                 await webViewMap.ExecuteScriptAsync("initMap(-6.9175, 107.6191, 13)");
+                await webViewMap.ExecuteScriptAsync("setInputMode(false)"); // Dashboard = view-only
                 // Load Markers
                 await Task.Delay(1000); // Wait for map to settle
                 await LoadMapMarkers();
@@ -505,44 +542,117 @@ namespace SiJabarApp
         {
              if (!isMapReady || collectionMaster == null || collectionSampah == null) return;
              try {
-                // Clear existing
+                // Check if JavaScript map is ready
+                string mapCheck = await webViewMap.ExecuteScriptAsync("isMapReady()");
+                if (mapCheck != "true")
+                {
+                    await Task.Delay(500);
+                    mapCheck = await webViewMap.ExecuteScriptAsync("isMapReady()");
+                    if (mapCheck != "true") return;
+                }
+
                 await webViewMap.ExecuteScriptAsync("clearMarkers()");
 
                 // 1. MASTER LOCATIONS (BLUE)
                 var listMaster = collectionMaster.Find(_ => true).ToList();
                 foreach (var tps in listMaster)
                 {
-                    if (tps.Latitude != 0 && tps.Longitude != 0)
+                    double lat = tps.Latitude;
+                    double lon = tps.Longitude;
+                    if (lat == 0 || lon == 0) continue;
+
+                    // AUTO-REPAIR corrupted coordinates
+                    if (Math.Abs(lat) > 90 || Math.Abs(lon) > 180)
                     {
-                         string lat = tps.Latitude.ToString(CultureInfo.InvariantCulture);
-                         string lon = tps.Longitude.ToString(CultureInfo.InvariantCulture);
-                         string judul = CleanText(tps.NamaTPS);
-                         string script = $"addMarker({lat}, {lon}, '{judul}', 'Lokasi TPS Resmi', '#3498db', 0)";
-                         await webViewMap.ExecuteScriptAsync(script);
+                        bool repaired = RepairCoordinate(ref lat, ref lon);
+                        if (repaired)
+                        {
+                            try {
+                                var update = Builders<MasterLokasiModel>.Update
+                                    .Set(x => x.Latitude, lat)
+                                    .Set(x => x.Longitude, lon);
+                                collectionMaster.UpdateOne(
+                                    Builders<MasterLokasiModel>.Filter.Eq(x => x.Id, tps.Id), update);
+                            } catch { }
+                        }
+                        else continue;
                     }
+
+                    string latStr = lat.ToString(CultureInfo.InvariantCulture);
+                    string lonStr = lon.ToString(CultureInfo.InvariantCulture);
+                    string judul = CleanText(tps.NamaTPS);
+                    string script = $"addMarker({latStr}, {lonStr}, '{judul}', 'Lokasi TPS Resmi', '#3498db', 0)";
+                    await webViewMap.ExecuteScriptAsync(script);
                 }
 
                 // 2. ACTIVE REPORTS (RED/YELLOW/GREEN)
-                var listSampah = collectionSampah.Find(_ => true).ToList(); // Show all on dashboard
+                var listSampah = collectionSampah.Find(_ => true).ToList();
                 foreach (var item in listSampah)
                 {
-                    if (item.Latitude != 0 && item.Longitude != 0)
-                    {
-                        double latOffset = item.Latitude + 0.00015; // Offset to not overlap exactly with TPS
-                        string lat = latOffset.ToString(CultureInfo.InvariantCulture);
-                        string lon = item.Longitude.ToString(CultureInfo.InvariantCulture);
-                        string judul = CleanText(item.Wilayah);
-                        string desc = CleanText($"{item.Jenis} - {item.Berat}kg ({item.Status})");
-                        
-                        string color = "#e74c3c"; // Red
-                        if (item.Status == "Selesai") color = "#2ecc71";
-                        else if (item.Status == "Dipilah" || item.Status == "Daur Ulang") color = "#f1c40f";
+                    double lat = item.Latitude;
+                    double lon = item.Longitude;
+                    if (lat == 0 || lon == 0) continue;
 
-                        string script = $"addMarker({lat}, {lon}, '{judul}', '{desc}', '{color}', 1000)";
-                        await webViewMap.ExecuteScriptAsync(script);
+                    // AUTO-REPAIR
+                    if (Math.Abs(lat) > 90 || Math.Abs(lon) > 180)
+                    {
+                        bool repaired = RepairCoordinate(ref lat, ref lon);
+                        if (repaired)
+                        {
+                            try {
+                                var update = Builders<SampahModel>.Update
+                                    .Set(x => x.Latitude, lat)
+                                    .Set(x => x.Longitude, lon);
+                                collectionSampah.UpdateOne(
+                                    Builders<SampahModel>.Filter.Eq(x => x.Id, item.Id), update);
+                            } catch { }
+                        }
+                        else continue;
                     }
+
+                    double latOffset = lat + 0.00015;
+                    string latStr = latOffset.ToString(CultureInfo.InvariantCulture);
+                    string lonStr = lon.ToString(CultureInfo.InvariantCulture);
+                    string judul = CleanText(item.Wilayah);
+                    string desc = CleanText($"{item.Jenis} - {item.Berat}kg ({item.Status})");
+                    
+                    string color = "#e74c3c";
+                    if (item.Status == "Selesai") color = "#2ecc71";
+                    else if (item.Status == "Dipilah" || item.Status == "Daur Ulang") color = "#f1c40f";
+
+                    string script = $"addMarker({latStr}, {lonStr}, '{judul}', '{desc}', '{color}', 1000)";
+                    await webViewMap.ExecuteScriptAsync(script);
                 }
-             } catch {}
+             } catch (Exception ex) {
+                System.Diagnostics.Debug.WriteLine("LoadMapMarkers Error: " + ex.Message);
+             }
+        }
+
+        // Auto-repair corrupted coordinates (locale bug stripped decimal points)
+        private bool RepairCoordinate(ref double lat, ref double lon)
+        {
+            bool latOk = Math.Abs(lat) <= 90;
+            bool lonOk = Math.Abs(lon) <= 180;
+
+            if (!latOk)
+            {
+                for (int p = 1; p <= 16; p++)
+                {
+                    double tryLat = lat / Math.Pow(10, p);
+                    if (tryLat >= -11 && tryLat <= 6) { lat = tryLat; latOk = true; break; }
+                }
+            }
+
+            if (!lonOk)
+            {
+                for (int p = 1; p <= 16; p++)
+                {
+                    double tryLon = lon / Math.Pow(10, p);
+                    if (tryLon >= 95 && tryLon <= 141) { lon = tryLon; lonOk = true; break; }
+                }
+            }
+
+            return latOk && lonOk;
         }
 
         private GraphicsPath RoundRect(Rectangle bounds, int radius)

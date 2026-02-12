@@ -12,7 +12,8 @@ namespace SiJabarApp.helper
         private IMongoCollection<model.User> usersCollection;
         // String koneksi MongoDB Atlas Anda
         // private readonly string connectionString = "mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB";
-        private readonly string connectionString = "mongodb://localhost:27017";
+        // private readonly string connectionString = "mongodb://localhost:27017";
+        private readonly string connectionString = "mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB";
         private readonly string databaseName = "SiJabarDB";
 
         public MongoHelper()

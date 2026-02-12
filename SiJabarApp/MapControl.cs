@@ -24,8 +24,22 @@ namespace SiJabarApp
         // --- DATABASE ---
         private IMongoCollection<SampahModel> collectionSampah;
         private IMongoCollection<MasterLokasiModel> collectionMaster;
-
         private bool isMapReady = false;
+
+        private string _userRole;
+        public string UserRole 
+        { 
+            get => _userRole; 
+            set 
+            { 
+                _userRole = value; 
+                if (btnKelolaMarker != null)
+                {
+                    btnKelolaMarker.Visible = (_userRole == "Admin");
+                }
+            }
+        }
+        private Button btnKelolaMarker;
 
         public MapControl()
         {
@@ -44,7 +58,8 @@ namespace SiJabarApp
         {
             try
             {
-                var client = new MongoClient("mongodb://localhost:27017");
+                // var client = new MongoClient("mongodb://localhost:27017");
+                var client = new MongoClient("mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB");
                 var database = client.GetDatabase("SiJabarDB");
                 collectionSampah = database.GetCollection<SampahModel>("Sampah");
                 collectionMaster = database.GetCollection<MasterLokasiModel>("MasterLokasi");
@@ -81,7 +96,7 @@ namespace SiJabarApp
             comboFilterStatus.DropDownStyle = ComboBoxStyle.DropDownList;
             comboFilterStatus.Font = new Font("Segoe UI", 10);
             comboFilterStatus.Width = 180;
-            comboFilterStatus.Location = new Point(120, 17);
+            comboFilterStatus.Location = new Point(140, 17); // Geser kanan (prev: 120)
             comboFilterStatus.SelectedIndexChanged += async (s, e) => {
                 await LoadAllMarkers();
             };
@@ -92,7 +107,7 @@ namespace SiJabarApp
             btnRefresh.Text = "Refresh Peta";
             btnRefresh.Font = new Font("Segoe UI Semibold", 9, FontStyle.Bold);
             btnRefresh.Size = new Size(120, 32);
-            btnRefresh.Location = new Point(320, 16);
+            btnRefresh.Location = new Point(340, 16); // Geser kanan (prev: 320)
             btnRefresh.BackColor = Color.FromArgb(33, 150, 243); 
             btnRefresh.ForeColor = Color.White;
             btnRefresh.FlatStyle = FlatStyle.Flat;
@@ -106,6 +121,26 @@ namespace SiJabarApp
                 btnRefresh.Enabled = true;
             };
             panelTop.Controls.Add(btnRefresh);
+
+            // TOMBOL KELOLA MARKER (ADMIN ONLY)
+            btnKelolaMarker = new Button();
+            btnKelolaMarker.Text = "Kelola Marker";
+            btnKelolaMarker.Font = new Font("Segoe UI Semibold", 9, FontStyle.Bold);
+            btnKelolaMarker.Size = new Size(120, 32);
+            btnKelolaMarker.Location = new Point(480, 16); // Geser kanan setelah Refresh
+            btnKelolaMarker.BackColor = Color.FromArgb(46, 204, 113); // Green
+            btnKelolaMarker.ForeColor = Color.White;
+            btnKelolaMarker.FlatStyle = FlatStyle.Flat;
+            btnKelolaMarker.FlatAppearance.BorderSize = 0;
+            btnKelolaMarker.Cursor = Cursors.Hand;
+            btnKelolaMarker.Visible = false; // Default Hidden
+            btnKelolaMarker.Click += async (s, e) => {
+                FormMasterLokasi frm = new FormMasterLokasi();
+                frm.ShowDialog();
+                // Refresh map after form closes — await to ensure markers fully loaded
+                await LoadAllMarkers();
+            };
+            panelTop.Controls.Add(btnKelolaMarker);
 
             // 2. WEBVIEW PETA
             webViewMap = new WebView2();
@@ -124,7 +159,8 @@ namespace SiJabarApp
                 string htmlPath = Path.Combine(Directory.GetCurrentDirectory(), "map.html");
                 if (File.Exists(htmlPath))
                 {
-                    webViewMap.Source = new Uri(htmlPath);
+                    var fileUri = new Uri(htmlPath).AbsoluteUri + "?v=" + DateTime.Now.Ticks;
+                    webViewMap.Source = new Uri(fileUri);
                     webViewMap.NavigationCompleted += WebViewMap_NavigationCompleted;
                 }
             }
@@ -139,8 +175,9 @@ namespace SiJabarApp
             if (e.IsSuccess)
             {
                 isMapReady = true;
-                // Init Peta Bandung
+                // Init Peta Bandung - View Only
                 await webViewMap.ExecuteScriptAsync("initMap(-6.9175, 107.6191, 13)");
+                await webViewMap.ExecuteScriptAsync("setInputMode(false)"); // Map view = view-only
                 
                 // Init Legend
                 string legendScript = @"
@@ -174,10 +211,19 @@ namespace SiJabarApp
         // =================================================================
         public async Task LoadAllMarkers()
         {
-            if (!isMapReady || collectionSampah == null) return;
+            if (!isMapReady || collectionSampah == null || collectionMaster == null) return;
 
             try
             {
+                // Verify JavaScript map object is actually ready
+                string mapCheck = await webViewMap.ExecuteScriptAsync("isMapReady()");
+                if (mapCheck != "true")
+                {
+                    await Task.Delay(500);
+                    mapCheck = await webViewMap.ExecuteScriptAsync("isMapReady()");
+                    if (mapCheck != "true") return;
+                }
+
                 await webViewMap.ExecuteScriptAsync("clearMarkers()");
 
                 string selectedFilter = comboFilterStatus.SelectedItem?.ToString() ?? "Semua Status";
@@ -186,14 +232,32 @@ namespace SiJabarApp
                 var listMaster = collectionMaster.Find(_ => true).ToList();
                 foreach (var tps in listMaster)
                 {
-                    if (tps.Latitude != 0 && tps.Longitude != 0)
+                    double lat = tps.Latitude;
+                    double lon = tps.Longitude;
+                    if (lat == 0 || lon == 0) continue;
+
+                    // AUTO-REPAIR: Fix corrupted coordinates (decimal point lost due to locale bug)
+                    if (Math.Abs(lat) > 90 || Math.Abs(lon) > 180)
                     {
-                        string lat = tps.Latitude.ToString(CultureInfo.InvariantCulture);
-                        string lon = tps.Longitude.ToString(CultureInfo.InvariantCulture);
-                        string judul = CleanText(tps.NamaTPS);
-                        string script = $"addMarker({lat}, {lon}, '{judul}', 'Lokasi TPS Resmi', '#3498db', 0)";
-                        await webViewMap.ExecuteScriptAsync(script);
+                        bool repaired = RepairCoordinate(ref lat, ref lon);
+                        if (repaired)
+                        {
+                            try {
+                                var update = Builders<MasterLokasiModel>.Update
+                                    .Set(x => x.Latitude, lat)
+                                    .Set(x => x.Longitude, lon);
+                                collectionMaster.UpdateOne(
+                                    Builders<MasterLokasiModel>.Filter.Eq(x => x.Id, tps.Id), update);
+                            } catch { }
+                        }
+                        else continue; // Can't repair, skip this record
                     }
+
+                    string latStr = lat.ToString(CultureInfo.InvariantCulture);
+                    string lonStr = lon.ToString(CultureInfo.InvariantCulture);
+                    string judul = CleanText(tps.NamaTPS);
+                    string script = $"addMarker({latStr}, {lonStr}, '{judul}', 'Lokasi TPS Resmi', '#3498db', 0)";
+                    await webViewMap.ExecuteScriptAsync(script);
                 }
 
                 // 2. LOAD MARKER LAPORAN SAMPAH
@@ -209,28 +273,76 @@ namespace SiJabarApp
 
                 foreach (var item in listSampah)
                 {
-                    if (item.Latitude != 0 && item.Longitude != 0)
+                    double lat = item.Latitude;
+                    double lon = item.Longitude;
+                    if (lat == 0 || lon == 0) continue;
+
+                    // AUTO-REPAIR for Sampah records too
+                    if (Math.Abs(lat) > 90 || Math.Abs(lon) > 180)
                     {
-                        double latOffset = item.Latitude + 0.00015;
-                        string lat = latOffset.ToString(CultureInfo.InvariantCulture);
-                        string lon = item.Longitude.ToString(CultureInfo.InvariantCulture);
-                        string judul = CleanText(item.Wilayah);
-                        string tgl = item.Tanggal.ToString("dd MMM");
-                        string desc = CleanText($"{item.Jenis} ({item.Berat} Kg)<br>Status: {item.Status}<br>Tgl: {tgl}");
-
-                        string color = "#e74c3c"; // Merah
-                        if (item.Status == "Selesai") color = "#2ecc71"; // Hijau
-                        else if (item.Status == "Dipilah" || item.Status == "Daur Ulang") color = "#f1c40f"; // Kuning
-
-                        string script = $"addMarker({lat}, {lon}, '{judul}', '{desc}', '{color}', 1000)";
-                        await webViewMap.ExecuteScriptAsync(script);
+                        bool repaired = RepairCoordinate(ref lat, ref lon);
+                        if (repaired)
+                        {
+                            try {
+                                var update = Builders<SampahModel>.Update
+                                    .Set(x => x.Latitude, lat)
+                                    .Set(x => x.Longitude, lon);
+                                collectionSampah.UpdateOne(
+                                    Builders<SampahModel>.Filter.Eq(x => x.Id, item.Id), update);
+                            } catch { }
+                        }
+                        else continue;
                     }
+
+                    double latOffset = lat + 0.00015;
+                    string latStr = latOffset.ToString(CultureInfo.InvariantCulture);
+                    string lonStr = lon.ToString(CultureInfo.InvariantCulture);
+                    string judul = CleanText(item.Wilayah);
+                    string tgl = item.Tanggal.ToString("dd MMM");
+                    string desc = CleanText($"{item.Jenis} ({item.Berat} Kg)<br>Status: {item.Status}<br>Tgl: {tgl}");
+
+                    string color = "#e74c3c";
+                    if (item.Status == "Selesai") color = "#2ecc71";
+                    else if (item.Status == "Dipilah" || item.Status == "Daur Ulang") color = "#f1c40f";
+
+                    string script = $"addMarker({latStr}, {lonStr}, '{judul}', '{desc}', '{color}', 1000)";
+                    await webViewMap.ExecuteScriptAsync(script);
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Gagal memuat marker: " + ex.Message);
             }
+        }
+
+        // Auto-repair coordinates corrupted by locale bug (decimal point stripped)
+        // Example: -6.905... was saved as -69053... (dot treated as thousands separator)
+        private bool RepairCoordinate(ref double lat, ref double lon)
+        {
+            bool latOk = Math.Abs(lat) <= 90;
+            bool lonOk = Math.Abs(lon) <= 180;
+
+            if (!latOk)
+            {
+                // Try dividing by powers of 10 until we get valid Indonesia latitude (-11 to 6)
+                for (int p = 1; p <= 16; p++)
+                {
+                    double tryLat = lat / Math.Pow(10, p);
+                    if (tryLat >= -11 && tryLat <= 6) { lat = tryLat; latOk = true; break; }
+                }
+            }
+
+            if (!lonOk)
+            {
+                // Try dividing by powers of 10 until we get valid Indonesia longitude (95 to 141)
+                for (int p = 1; p <= 16; p++)
+                {
+                    double tryLon = lon / Math.Pow(10, p);
+                    if (tryLon >= 95 && tryLon <= 141) { lon = tryLon; lonOk = true; break; }
+                }
+            }
+
+            return latOk && lonOk;
         }
     }
 }

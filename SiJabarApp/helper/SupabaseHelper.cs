@@ -47,19 +47,38 @@ namespace SiJabarApp.helper
             await using var dataSource = dataSourceBuilder.Build();
             await using var conn = await dataSource.OpenConnectionAsync();
 
-            string sql = "SELECT content FROM match_documents(@qv, @thresh, @cnt, @uid)";
-            await using var cmd = new NpgsqlCommand(sql, conn);
-
-            cmd.Parameters.AddWithValue("qv", new Vector(queryVector));
-            cmd.Parameters.AddWithValue("thresh", 0.5); // Minimal kemiripan
-            cmd.Parameters.AddWithValue("cnt", 5);      // Ambil 5 data teratas
-            cmd.Parameters.AddWithValue("uid", userId);
-
-            await using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            // Modifikasi: Cari data milik User TERSEBUT ATAU data GLOBAL (system_pdf)
+            // match_documents adalah function di Supabase. 
+            // Kita Filter manual atau modifikasi panggilannya. 
+            // Karena match_documents biasanya di-set strictly via uid di SQL Function, 
+            // kita panggil dua kali atau gunakan logic OR jika SQL Function mengizinkan.
+            
+            // Cara Efektif: Panggil dua kali untuk memastikan prioritas/kelengkapan data.
+            string[] uids = { userId, "system_pdf" };
+            
+            foreach (var uid in uids)
             {
-                results.Add(reader.GetString(0));
+                if (string.IsNullOrEmpty(uid)) continue;
+
+                string sql = "SELECT content FROM match_documents(@qv, @thresh, @cnt, @uid)";
+                await using var cmd = new NpgsqlCommand(sql, conn);
+
+                cmd.Parameters.AddWithValue("qv", new Vector(queryVector));
+                cmd.Parameters.AddWithValue("thresh", 0.5); // Minimal kemiripan
+                cmd.Parameters.AddWithValue("cnt", uid == "system_pdf" ? 10 : 5); // Beri lebih banyak room untuk PDF
+                cmd.Parameters.AddWithValue("uid", uid);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    string content = reader.GetString(0);
+                    if (!results.Contains(content))
+                    {
+                        results.Add(content);
+                    }
+                }
             }
+            
             return results;
         }
     }

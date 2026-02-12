@@ -11,28 +11,49 @@ namespace SiJabarApp.helper
         private static readonly HttpClient client = new HttpClient();
         private static string _apiKey = "iWEbEkPNiwBcb7c6KTFxbs2Mz5hbznNA"; // Ganti dengan API Key
 
-        // 1. Fungsi Embedding (Teks -> Angka)
+        // 1. Fungsi Embedding (Teks -> Angka) dengan Retry Logic (Rate Limit)
         public static async Task<float[]> GetEmbedding(string text)
         {
-            var payload = new
+            int maxRetries = 3;
+            int delayMs = 1000;
+
+            for (int i = 0; i < maxRetries; i++)
             {
-                model = "mistral-embed",
-                input = new[] { text }
-            };
+                var payload = new
+                {
+                    model = "mistral-embed",
+                    input = new[] { text }
+                };
 
-            var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
+                var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
 
-            if (!client.DefaultRequestHeaders.Contains("Authorization"))
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+                if (!client.DefaultRequestHeaders.Contains("Authorization"))
+                    client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
 
-            var res = await client.PostAsync("https://api.mistral.ai/v1/embeddings", content);
+                var res = await client.PostAsync("https://api.mistral.ai/v1/embeddings", content);
 
-            if (!res.IsSuccessStatusCode) return null;
+                if (res.IsSuccessStatusCode)
+                {
+                    var responseString = await res.Content.ReadAsStringAsync();
+                    dynamic result = JsonConvert.DeserializeObject(responseString);
+                    return result.data[0].embedding.ToObject<float[]>();
+                }
+                
+                if ((int)res.StatusCode == 429) // Too Many Requests
+                {
+                    if (i == maxRetries - 1) throw new System.Exception("Mistral API Rate Limit tercapai setelah beberapa kali mencoba. Silakan tunggu beberapa saat.");
+                    
+                    System.Diagnostics.Debug.WriteLine($"Rate Limit hit. Retrying in {delayMs}ms... (Attempt {i+1})");
+                    await Task.Delay(delayMs);
+                    delayMs *= 2; // Exponential backoff
+                    continue;
+                }
 
-            var responseString = await res.Content.ReadAsStringAsync();
-            dynamic result = JsonConvert.DeserializeObject(responseString);
+                string errorBody = await res.Content.ReadAsStringAsync();
+                throw new System.Exception($"Mistral API Error ({res.StatusCode}): {errorBody}");
+            }
 
-            return result.data[0].embedding.ToObject<float[]>();
+            return null; // Should not happen
         }
 
         // 2. Fungsi Chat Completion (Tanya Jawab) - Single Turn (Backward Compatible)

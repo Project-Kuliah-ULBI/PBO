@@ -103,10 +103,12 @@ namespace SiJabarApp
         {
             // 1. Init Dashboard
             dashboardControl = new DashboardControl();
+            dashboardControl.UserRole = this.activeRole; // Pass Role
             dashboardControl.Dock = DockStyle.Fill;
             
             // 2. Init Map
             mapControl = new MapControl();
+            mapControl.UserRole = this.activeRole; // Pass Role to MapControl
             mapControl.Dock = DockStyle.Fill;
             mapControl.Visible = false;
 
@@ -163,6 +165,13 @@ namespace SiJabarApp
             SwitchView(fileIOControl);
             if(lblTitle != null) lblTitle.Text = "IMPORT & EXPORT";
         }
+        
+        private void btnImportPDF_Click(object sender, EventArgs e)
+        {
+            ActivateButton(sender);
+            ShowImportPage();
+            if(lblTitle != null) lblTitle.Text = "IMPORT PDF (RAG)";
+        }
 
         private void ShowDataSampah()
         {
@@ -179,10 +188,12 @@ namespace SiJabarApp
             LoadData(); 
         }
 
-        private void ShowMap()
+        private async void ShowMap()
         {
             SwitchView(mapControl);
             if(lblTitle != null) lblTitle.Text = "PETA SEBARAN";
+            // Refresh markers every time map is shown (picks up newly added TPS/TPA)
+            await mapControl.LoadAllMarkers();
         }
 
         private void ShowChart()
@@ -212,7 +223,8 @@ namespace SiJabarApp
         {
             try
             {
-                var client = new MongoClient("mongodb://localhost:27017");
+                // var client = new MongoClient("mongodb://localhost:27017");
+                var client = new MongoClient("mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB");
                 var database = client.GetDatabase("SiJabarDB");
                 collection = database.GetCollection<SampahModel>("Sampah");
             }
@@ -238,11 +250,39 @@ namespace SiJabarApp
                 // Masyarakat: Hanya Lapor, Tidak boleh Edit/Hapus
                 btnEdit.Visible = false;
                 btnDelete.Visible = false;
+                
+                // NEW: Hide Data Sampah Sidebar for Masyarakat
+                if(btnDataSampah != null) btnDataSampah.Visible = false;
             }
             if (activeRole != "Admin")
             {
                 btnImportCSV.Visible = false;
             }
+            
+            // NEW: Hide Export PDF for Masyarakat
+            if (activeRole == "Masyarakat" && btnExportPDF != null)
+            {
+                btnExportPDF.Visible = false;
+            }
+
+            // NEW: Petugas (Admin - Delete)
+            if (activeRole == "Petugas")
+            {
+                 // 1. Hide Delete Button
+                 btnDelete.Visible = false;
+                 
+                 // 2. Shift Add & Edit to Right (Fill Gap)
+                 // Assumes layout: [Add] [Edit] [Delete]
+                 if (btnEdit != null && btnAdd != null)
+                 {
+                     Point locDelete = btnDelete.Location;
+                     Point locEdit = btnEdit.Location;
+                     
+                     btnEdit.Location = locDelete;
+                     btnAdd.Location = locEdit;
+                 }
+            }
+
         }
 
         // --- 3. STYLING TABEL & UI MODERN ---
@@ -336,7 +376,7 @@ namespace SiJabarApp
             if(btnAdd != null) StyleHelper.StyleButton(btnAdd, StyleHelper.PrimaryColor, Color.White);
             if(btnEdit != null) 
             {
-                StyleHelper.StyleButton(btnEdit, StyleHelper.WarningColor, Color.Black); // Force Yellow
+                StyleHelper.StyleButton(btnEdit, StyleHelper.WarningColor, Color.White); // Force Yellow
                 btnEdit.BackColor = StyleHelper.WarningColor; // Double assurance
             }
             if(btnDelete != null) StyleHelper.StyleButton(btnDelete, StyleHelper.DangerColor, Color.White);
@@ -507,7 +547,7 @@ namespace SiJabarApp
         {
             SwitchView(fileIOControl);
             fileIOControl.ShowImportMode();
-            if(lblTitle != null) lblTitle.Text = "IMPORT CSV";
+            if(lblTitle != null) lblTitle.Text = "IMPORT DATA";
         }
 
         private void ShowExportPage()

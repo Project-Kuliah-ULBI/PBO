@@ -21,6 +21,7 @@ namespace SiJabarApp.model
         public string Message { get; set; }
 
         [BsonElement("timestamp")]
+        [BsonDateTimeOptions(Kind = DateTimeKind.Local)]
         public DateTime Timestamp { get; set; }
     }
 }

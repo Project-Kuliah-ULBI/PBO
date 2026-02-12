@@ -72,7 +72,7 @@ namespace SiJabarApp
             this.Controls.Add(grpExport);
 
             // 3. IMPORT SECTION
-            grpImport = CreateGroupBox("Import CSV (Open Data Jabar)", 80); // Same Y position
+            grpImport = CreateGroupBox("Import CSV & PDF", 80); // Same Y position
             grpImport.Size = new Size(740, 320);
             grpImport.Visible = false; // Default Hidden
 
@@ -92,7 +92,7 @@ namespace SiJabarApp
 
             // Labels inside Drop Zone
             lblDropInfo = new Label();
-            lblDropInfo.Text = "Drag & Drop file CSV di sini\nAtau klik tombol di bawah";
+            lblDropInfo.Text = "Drag & Drop file CSV/PDF di sini\nAtau klik tombol di bawah";
             lblDropInfo.TextAlign = ContentAlignment.MiddleCenter;
             lblDropInfo.Font = new Font("Segoe UI", 12, FontStyle.Bold);
             lblDropInfo.ForeColor = Color.Gray;
@@ -118,7 +118,7 @@ namespace SiJabarApp
 
             // AI Knowledge Info Label
             Label lblAiInfo = new Label();
-            lblAiInfo.Text = "ℹ️ Note: Data CSV yang diimpor akan diproses menjadi Knowledge AI (RAG).";
+            lblAiInfo.Text = "ℹ️ Note: Data CSV/PDF yang diimpor akan diproses menjadi Knowledge AI (RAG).";
             lblAiInfo.Font = new Font("Segoe UI", 9, FontStyle.Italic);
             lblAiInfo.ForeColor = Color.DimGray;
             lblAiInfo.AutoSize = true;
@@ -128,7 +128,7 @@ namespace SiJabarApp
 
         public void ShowImportMode()
         {
-            lblTitle.Text = "Import Data CSV";
+            lblTitle.Text = "Import Data CSV/PDF";
             grpImport.Visible = true;
             grpExport.Visible = false;
         }
@@ -180,8 +180,8 @@ namespace SiJabarApp
         {
             openFileDialog = new OpenFileDialog
             {
-                Filter = "CSV Files (*.csv)|*.csv",
-                Title = "Pilih File CSV Open Data Jabar"
+                Filter = "Data Files (*.csv;*.pdf)|*.csv;*.pdf|CSV Files (*.csv)|*.csv|PDF Files (*.pdf)|*.pdf",
+                Title = "Pilih File CSV/PDF untuk Knowledge Base AI"
             };
 
             if (openFileDialog.ShowDialog() == DialogResult.OK)
@@ -192,9 +192,10 @@ namespace SiJabarApp
 
         private async Task ProcessFile(string filePath)
         {
-            if (Path.GetExtension(filePath).ToLower() != ".csv")
+            string ext = Path.GetExtension(filePath).ToLower();
+            if (ext != ".csv" && ext != ".pdf")
             {
-                MessageBox.Show("Harap pilih file berformat .CSV!", "Format Salah", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Harap pilih file berformat .CSV atau .PDF!", "Format Salah", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -203,10 +204,19 @@ namespace SiJabarApp
 
             try
             {
-                var ingestion = new CsvIngestionHelper();
-                await ingestion.ProcessOpenDataCsv(filePath);
+                if (ext == ".csv")
+                {
+                    var ingestion = new CsvIngestionHelper();
+                    await ingestion.ProcessOpenDataCsv(filePath);
+                    MessageBox.Show("Data CSV berhasil diproses dan disimpan ke Knowledge Base!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else if (ext == ".pdf")
+                {
+                    var ingestion = new PdfIngestionHelper();
+                    await ingestion.ProcessPdf(filePath);
+                    MessageBox.Show("File PDF berhasil diproses dan disimpan ke Knowledge Base!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
                 
-                MessageBox.Show("Data CSV berhasil diproses dan disimpan ke Knowledge Base!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 OnDataImported?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
@@ -215,7 +225,7 @@ namespace SiJabarApp
             }
             finally
             {
-                lblDropInfo.Text = "Drag & Drop file CSV di sini\nAtau klik tombol di bawah";
+                lblDropInfo.Text = "Drag & Drop file CSV/PDF di sini\nAtau klik tombol di bawah";
                 this.Enabled = true;
             }
         }

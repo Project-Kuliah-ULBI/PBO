@@ -11,5 +11,6 @@ namespace SiJabarApp.model
         public string NamaTPS { get; set; }
         public double Latitude { get; set; }
         public double Longitude { get; set; }
+        public string Keterangan { get; set; }
     }
 }

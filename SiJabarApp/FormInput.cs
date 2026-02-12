@@ -78,7 +78,8 @@ namespace SiJabarApp
         {
             try
             {
-                var client = new MongoClient("mongodb://localhost:27017");
+                // var client = new MongoClient("mongodb://localhost:27017");
+                var client = new MongoClient("mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB");
                 var db = client.GetDatabase("SiJabarDB");
                 collectionSampah = db.GetCollection<SampahModel>("Sampah");
                 collectionMaster = db.GetCollection<MasterLokasiModel>("MasterLokasi");
@@ -217,12 +218,38 @@ namespace SiJabarApp
                 await webViewInput.ExecuteScriptAsync("initMap(-6.9175, 107.6191, 13)");
                 await webViewInput.ExecuteScriptAsync("setInputMode(true)"); // Mode Input Nyala
 
+                // Load semua Master TPS markers (BIRU) agar terlihat di map
+                try
+                {
+                    if (collectionMaster != null)
+                    {
+                        var listMaster = collectionMaster.Find(_ => true).ToList();
+                        foreach (var tps in listMaster)
+                        {
+                            if (tps.Latitude != 0 && tps.Longitude != 0)
+                            {
+                                string lat = tps.Latitude.ToString(CultureInfo.InvariantCulture);
+                                string lon = tps.Longitude.ToString(CultureInfo.InvariantCulture);
+                                string judul = tps.NamaTPS.Replace("'", "\\'");
+                                string script = $"addMarker({lat}, {lon}, '{judul}', 'Lokasi TPS Resmi', '#3498db', 0)";
+                                await webViewInput.ExecuteScriptAsync(script);
+                            }
+                        }
+                    }
+                }
+                catch { }
+
                 // Jika Edit, Load Marker Lama
                 if (_isEditMode && txtLatitude != null && !string.IsNullOrEmpty(txtLatitude.Text))
                 {
-                    string lat = txtLatitude.Text;
-                    string lon = txtLongitude.Text;
-                    await webViewInput.ExecuteScriptAsync($"setLocation({lat}, {lon})");
+                    try
+                    {
+                        double lat = double.Parse(txtLatitude.Text, NumberStyles.Any, CultureInfo.InvariantCulture);
+                        double lon = double.Parse(txtLongitude.Text, NumberStyles.Any, CultureInfo.InvariantCulture);
+                        string script = $"setLocation({lat.ToString(CultureInfo.InvariantCulture)}, {lon.ToString(CultureInfo.InvariantCulture)})";
+                        await webViewInput.ExecuteScriptAsync(script);
+                    }
+                    catch { }
                 }
             }
         }
@@ -249,7 +276,7 @@ namespace SiJabarApp
         // ====================================================================
         // 4. LOGIKA CRUD (SIMPAN / EDIT)
         // ====================================================================
-        private void btnSimpan_Click(object sender, EventArgs e)
+        private async void btnSimpan_Click(object sender, EventArgs e)
         {
             string namaWilayah = comboWilayah.Text;
 
@@ -298,6 +325,33 @@ namespace SiJabarApp
                 {
                     sampah.Id = _sampahId;
                     collectionSampah.ReplaceOne(Builders<SampahModel>.Filter.Eq(x => x.Id, _sampahId), sampah);
+                }
+
+                // --- SYNC KE SUPABASE (RAG KNOWLEDGE AI) ---
+                try
+                {
+                    string tgl = sampah.Tanggal.ToString("dd MMMM yyyy");
+                    string ragText = $"Laporan Sampah: Di wilayah {sampah.Wilayah}, " +
+                        $"tercatat sampah jenis {sampah.Jenis} seberat {sampah.Berat} Kg " +
+                        $"pada tanggal {tgl}. Status: {sampah.Status}. " +
+                        (!string.IsNullOrEmpty(sampah.Keterangan) ? $"Keterangan: {sampah.Keterangan}." : "");
+
+                    float[] vector = await MistralHelper.GetEmbedding(ragText);
+                    if (vector != null)
+                    {
+                        var supaHelper = new SupabaseHelper();
+                        await supaHelper.InsertDocumentAsync(ragText, this._userId, vector);
+                        MessageBox.Show("Data berhasil di-sync ke Knowledge Base AI!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Gagal generate embedding vector (Mistral API Error). Cek kuota atau koneksi.", "RAG Sync Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                }
+                catch (Exception exRag)
+                {
+                    MessageBox.Show("Gagal Sync ke Supabase: " + exRag.Message, "RAG Sync Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    System.Diagnostics.Debug.WriteLine("RAG Sync Error: " + exRag.Message);
                 }
 
                 // AUTO-SAVE MASTER LOKASI (Fitur Pintar)

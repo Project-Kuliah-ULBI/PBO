@@ -37,8 +37,8 @@ namespace SiJabarApp
         {
             try
             {
-                //var client = new MongoClient("mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB");
-                var client = new MongoClient("mongodb://localhost:27017");
+                var client = new MongoClient("mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB");
+                //var client = new MongoClient("mongodb://localhost:27017");
                 var db = client.GetDatabase("SiJabarDB");
                 _chatCollection = db.GetCollection<ChatLog>("ChatHistory");
             }
@@ -122,19 +122,19 @@ namespace SiJabarApp
                 }
                 else
                 {
-                    contextSb.AppendLine("Tidak ada data spesifik ditemukan di database. Jawab berdasarkan pengetahuan umum tentang pengelolaan sampah.");
+                    contextSb.AppendLine("TIDAK ADA DATA RELEVAN ditemukan di database. Anda WAJIB menolak menjawab dengan sopan.");
                 }
 
                 // 5. Susun System Prompt
                 string systemPrompt =
                     "PERAN: Anda adalah 'SiJabar Assistant', asisten cerdas aplikasi pengelolaan sampah Jawa Barat.\n" +
-                    "TUGAS: Jawab pertanyaan user dengan ramah, singkat, dan informatif.\n" +
-                    "ATURAN:\n" +
-                    "- Anda MEMILIKI riwayat percakapan. Pesan-pesan sebelumnya sudah disertakan dalam konteks ini. Gunakan riwayat tersebut untuk menjawab pertanyaan lanjutan.\n" +
-                    "- Jika user bertanya apakah Anda ingat percakapan sebelumnya, jawab YA dan referensikan topik yang sudah dibahas.\n" +
-                    "- Gunakan DATA PENDUKUNG di bawah ini sebagai sumber kebenaran utama.\n" +
-                    "- Jika data pendukung menjawab pertanyaan, gunakan informasi tersebut.\n" +
-                    "- Jika tidak ada data pendukung, berikan saran umum tentang sampah.\n" +
+                    "TUGAS: Jawab pertanyaan user HANYA berdasarkan DATA PENDUKUNG yang disertakan di bawah.\n" +
+                    "ATURAN KETAT:\n" +
+                    "- Anda HANYA boleh menjawab berdasarkan DATA PENDUKUNG (FAKTA DARI DATABASE) di bawah ini.\n" +
+                    "- JANGAN PERNAH mengarang, mengira-ngira, atau menjawab berdasarkan pengetahuan umum di luar data yang tersedia.\n" +
+                    "- Jika DATA PENDUKUNG berisi informasi yang relevan, jawab dengan ramah, singkat, dan informatif berdasarkan data tersebut.\n" +
+                    "- Jika TIDAK ADA DATA PENDUKUNG atau data tidak relevan dengan pertanyaan, jawab: 'Maaf, saya belum memiliki data untuk menjawab pertanyaan tersebut.'\n" +
+                    "- Anda MEMILIKI riwayat percakapan. Gunakan riwayat tersebut untuk menjawab pertanyaan lanjutan.\n" +
                     "- JANGAN berikan kode program/coding.\n\n" +
                     contextSb.ToString();
 
@@ -190,7 +190,7 @@ namespace SiJabarApp
                     UserId = _currentUserId,
                     Role = role,
                     Message = msg,
-                    Timestamp = DateTime.UtcNow
+                    Timestamp = DateTime.Now
                 });
             }
         }

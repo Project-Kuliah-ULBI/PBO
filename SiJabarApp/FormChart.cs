@@ -65,7 +65,8 @@ namespace SiJabarApp
         {
             try
             {
-                var client = new MongoClient("mongodb://localhost:27017");
+                // var client = new MongoClient("mongodb://localhost:27017");
+                var client = new MongoClient("mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB");
                 var database = client.GetDatabase("SiJabarDB");
                 collectionSampah = database.GetCollection<SampahModel>("Sampah");
             }
