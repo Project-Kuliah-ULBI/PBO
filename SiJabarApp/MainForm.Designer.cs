@@ -32,13 +32,17 @@
             DataGridViewCellStyle dataGridViewCellStyle2 = new DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             panelSidebar = new Panel();
-            btnLogout = new FontAwesome.Sharp.IconButton();
-            btnChatbot = new FontAwesome.Sharp.IconButton();
+            btnImportCSV = new FontAwesome.Sharp.IconButton();
             btnExportPDF = new FontAwesome.Sharp.IconButton();
+            btnChart = new FontAwesome.Sharp.IconButton();
+            btnBukaMap = new FontAwesome.Sharp.IconButton();
+            btnLogout = new FontAwesome.Sharp.IconButton();
             btnDataSampah = new FontAwesome.Sharp.IconButton();
+            btnDashboard = new FontAwesome.Sharp.IconButton();
             panel1 = new Panel();
             label1 = new Label();
             iconPictureBox1 = new FontAwesome.Sharp.IconPictureBox();
+            btnFloatingChat = new FontAwesome.Sharp.IconButton();
             panelHeader = new Panel();
             btnMinimize = new FontAwesome.Sharp.IconButton();
             btnMaximize = new FontAwesome.Sharp.IconButton();
@@ -71,10 +75,13 @@
             // panelSidebar
             // 
             panelSidebar.BackColor = Color.FromArgb(33, 37, 41);
-            panelSidebar.Controls.Add(btnLogout);
-            panelSidebar.Controls.Add(btnChatbot);
+            panelSidebar.Controls.Add(btnImportCSV);
             panelSidebar.Controls.Add(btnExportPDF);
+            panelSidebar.Controls.Add(btnChart);
+            panelSidebar.Controls.Add(btnBukaMap);
+            panelSidebar.Controls.Add(btnLogout);
             panelSidebar.Controls.Add(btnDataSampah);
+            panelSidebar.Controls.Add(btnDashboard);
             panelSidebar.Controls.Add(panel1);
             panelSidebar.Dock = DockStyle.Left;
             panelSidebar.Location = new Point(0, 0);
@@ -83,9 +90,101 @@
             panelSidebar.Size = new Size(260, 720);
             panelSidebar.TabIndex = 0;
             // 
+            // btnImportCSV
+            // 
+            btnImportCSV.Dock = DockStyle.Top;
+            btnImportCSV.FlatAppearance.BorderSize = 0;
+            btnImportCSV.FlatStyle = FlatStyle.Flat;
+            btnImportCSV.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnImportCSV.ForeColor = Color.White;
+            btnImportCSV.IconChar = FontAwesome.Sharp.IconChar.Inbox;
+            btnImportCSV.IconColor = Color.White;
+            btnImportCSV.IconFont = FontAwesome.Sharp.IconFont.Auto;
+            btnImportCSV.IconSize = 24;
+            btnImportCSV.ImageAlign = ContentAlignment.MiddleLeft;
+            btnImportCSV.Location = new Point(0, 355);
+            btnImportCSV.Name = "btnImportCSV";
+            btnImportCSV.Padding = new Padding(25, 0, 0, 0);
+            btnImportCSV.Size = new Size(260, 55);
+            btnImportCSV.TabIndex = 7;
+            btnImportCSV.Text = "Import Data";
+            btnImportCSV.TextAlign = ContentAlignment.MiddleLeft;
+            btnImportCSV.TextImageRelation = TextImageRelation.ImageBeforeText;
+            btnImportCSV.UseVisualStyleBackColor = true;
+            btnImportCSV.Click += btnImportCSV_Click;
+            // 
+            // btnExportPDF
+            // 
+            btnExportPDF.Dock = DockStyle.Top;
+            btnExportPDF.FlatAppearance.BorderSize = 0;
+            btnExportPDF.FlatStyle = FlatStyle.Flat;
+            btnExportPDF.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnExportPDF.ForeColor = Color.White;
+            btnExportPDF.IconChar = FontAwesome.Sharp.IconChar.FilePdf;
+            btnExportPDF.IconColor = Color.White;
+            btnExportPDF.IconFont = FontAwesome.Sharp.IconFont.Auto;
+            btnExportPDF.IconSize = 24;
+            btnExportPDF.ImageAlign = ContentAlignment.MiddleLeft;
+            btnExportPDF.Location = new Point(0, 300);
+            btnExportPDF.Name = "btnExportPDF";
+            btnExportPDF.Padding = new Padding(25, 0, 0, 0);
+            btnExportPDF.Size = new Size(260, 55);
+            btnExportPDF.TabIndex = 2;
+            btnExportPDF.Text = "Export PDF";
+            btnExportPDF.TextAlign = ContentAlignment.MiddleLeft;
+            btnExportPDF.TextImageRelation = TextImageRelation.ImageBeforeText;
+            btnExportPDF.UseVisualStyleBackColor = true;
+            btnExportPDF.Click += btnExportPDF_Click;
+            // 
+            // btnChart
+            // 
+            btnChart.Dock = DockStyle.Top;
+            btnChart.FlatAppearance.BorderSize = 0;
+            btnChart.FlatStyle = FlatStyle.Flat;
+            btnChart.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnChart.ForeColor = Color.White;
+            btnChart.IconChar = FontAwesome.Sharp.IconChar.ChartColumn;
+            btnChart.IconColor = Color.White;
+            btnChart.IconFont = FontAwesome.Sharp.IconFont.Auto;
+            btnChart.IconSize = 24;
+            btnChart.ImageAlign = ContentAlignment.MiddleLeft;
+            btnChart.Location = new Point(0, 245);
+            btnChart.Name = "btnChart";
+            btnChart.Padding = new Padding(25, 0, 0, 0);
+            btnChart.Size = new Size(260, 55);
+            btnChart.TabIndex = 6;
+            btnChart.Text = "Charts";
+            btnChart.TextAlign = ContentAlignment.MiddleLeft;
+            btnChart.TextImageRelation = TextImageRelation.ImageBeforeText;
+            btnChart.UseVisualStyleBackColor = true;
+            btnChart.Click += btnChart_Click;
+            // 
+            // btnBukaMap
+            // 
+            btnBukaMap.Dock = DockStyle.Top;
+            btnBukaMap.FlatAppearance.BorderSize = 0;
+            btnBukaMap.FlatStyle = FlatStyle.Flat;
+            btnBukaMap.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnBukaMap.ForeColor = Color.White;
+            btnBukaMap.IconChar = FontAwesome.Sharp.IconChar.Map;
+            btnBukaMap.IconColor = Color.White;
+            btnBukaMap.IconFont = FontAwesome.Sharp.IconFont.Auto;
+            btnBukaMap.IconSize = 24;
+            btnBukaMap.ImageAlign = ContentAlignment.MiddleLeft;
+            btnBukaMap.Location = new Point(0, 190);
+            btnBukaMap.Name = "btnBukaMap";
+            btnBukaMap.Padding = new Padding(25, 0, 0, 0);
+            btnBukaMap.Size = new Size(260, 55);
+            btnBukaMap.TabIndex = 5;
+            btnBukaMap.Text = "Maps";
+            btnBukaMap.TextAlign = ContentAlignment.MiddleLeft;
+            btnBukaMap.TextImageRelation = TextImageRelation.ImageBeforeText;
+            btnBukaMap.UseVisualStyleBackColor = true;
+            btnBukaMap.Click += btnBukaMap_Click;
+            // 
             // btnLogout
             // 
-            btnLogout.BackColor = Color.FromArgb(33, 37, 41);
+            btnLogout.BackColor = Color.FromArgb(220, 53, 69);
             btnLogout.Dock = DockStyle.Bottom;
             btnLogout.FlatAppearance.BorderSize = 0;
             btnLogout.FlatAppearance.MouseDownBackColor = Color.Maroon;
@@ -109,52 +208,6 @@
             btnLogout.UseVisualStyleBackColor = false;
             btnLogout.Click += btnLogout_Click;
             // 
-            // btnChatbot
-            // 
-            btnChatbot.Dock = DockStyle.Top;
-            btnChatbot.FlatAppearance.BorderSize = 0;
-            btnChatbot.FlatStyle = FlatStyle.Flat;
-            btnChatbot.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnChatbot.ForeColor = Color.White;
-            btnChatbot.IconChar = FontAwesome.Sharp.IconChar.Robot;
-            btnChatbot.IconColor = Color.White;
-            btnChatbot.IconFont = FontAwesome.Sharp.IconFont.Auto;
-            btnChatbot.IconSize = 24;
-            btnChatbot.ImageAlign = ContentAlignment.MiddleLeft;
-            btnChatbot.Location = new Point(0, 190);
-            btnChatbot.Name = "btnChatbot";
-            btnChatbot.Padding = new Padding(25, 0, 0, 0);
-            btnChatbot.Size = new Size(260, 55);
-            btnChatbot.TabIndex = 3;
-            btnChatbot.Text = "Chat Assistant";
-            btnChatbot.TextAlign = ContentAlignment.MiddleLeft;
-            btnChatbot.TextImageRelation = TextImageRelation.ImageBeforeText;
-            btnChatbot.UseVisualStyleBackColor = true;
-            btnChatbot.Click += btnChatbot_Click;
-            // 
-            // btnExportPDF
-            // 
-            btnExportPDF.Dock = DockStyle.Top;
-            btnExportPDF.FlatAppearance.BorderSize = 0;
-            btnExportPDF.FlatStyle = FlatStyle.Flat;
-            btnExportPDF.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
-            btnExportPDF.ForeColor = Color.White;
-            btnExportPDF.IconChar = FontAwesome.Sharp.IconChar.FilePdf;
-            btnExportPDF.IconColor = Color.White;
-            btnExportPDF.IconFont = FontAwesome.Sharp.IconFont.Auto;
-            btnExportPDF.IconSize = 24;
-            btnExportPDF.ImageAlign = ContentAlignment.MiddleLeft;
-            btnExportPDF.Location = new Point(0, 135);
-            btnExportPDF.Name = "btnExportPDF";
-            btnExportPDF.Padding = new Padding(25, 0, 0, 0);
-            btnExportPDF.Size = new Size(260, 55);
-            btnExportPDF.TabIndex = 2;
-            btnExportPDF.Text = "Export PDF";
-            btnExportPDF.TextAlign = ContentAlignment.MiddleLeft;
-            btnExportPDF.TextImageRelation = TextImageRelation.ImageBeforeText;
-            btnExportPDF.UseVisualStyleBackColor = true;
-            btnExportPDF.Click += btnExportPDF_Click;
-            // 
             // btnDataSampah
             // 
             btnDataSampah.Dock = DockStyle.Top;
@@ -167,7 +220,7 @@
             btnDataSampah.IconFont = FontAwesome.Sharp.IconFont.Auto;
             btnDataSampah.IconSize = 24;
             btnDataSampah.ImageAlign = ContentAlignment.MiddleLeft;
-            btnDataSampah.Location = new Point(0, 80);
+            btnDataSampah.Location = new Point(0, 135);
             btnDataSampah.Name = "btnDataSampah";
             btnDataSampah.Padding = new Padding(25, 0, 0, 0);
             btnDataSampah.Size = new Size(260, 55);
@@ -177,6 +230,29 @@
             btnDataSampah.TextImageRelation = TextImageRelation.ImageBeforeText;
             btnDataSampah.UseVisualStyleBackColor = true;
             btnDataSampah.Click += btnDataSampah_Click;
+            // 
+            // btnDashboard
+            // 
+            btnDashboard.Dock = DockStyle.Top;
+            btnDashboard.FlatAppearance.BorderSize = 0;
+            btnDashboard.FlatStyle = FlatStyle.Flat;
+            btnDashboard.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnDashboard.ForeColor = Color.White;
+            btnDashboard.IconChar = FontAwesome.Sharp.IconChar.PieChart;
+            btnDashboard.IconColor = Color.White;
+            btnDashboard.IconFont = FontAwesome.Sharp.IconFont.Auto;
+            btnDashboard.IconSize = 24;
+            btnDashboard.ImageAlign = ContentAlignment.MiddleLeft;
+            btnDashboard.Location = new Point(0, 80);
+            btnDashboard.Name = "btnDashboard";
+            btnDashboard.Padding = new Padding(25, 0, 0, 0);
+            btnDashboard.Size = new Size(260, 55);
+            btnDashboard.TabIndex = 8;
+            btnDashboard.Text = "Dashboard";
+            btnDashboard.TextAlign = ContentAlignment.MiddleLeft;
+            btnDashboard.TextImageRelation = TextImageRelation.ImageBeforeText;
+            btnDashboard.UseVisualStyleBackColor = true;
+            btnDashboard.Click += btnDashboard_Click;
             // 
             // panel1
             // 
@@ -212,6 +288,24 @@
             iconPictureBox1.Size = new Size(48, 47);
             iconPictureBox1.TabIndex = 0;
             iconPictureBox1.TabStop = false;
+            // 
+            // btnFloatingChat
+            // 
+            btnFloatingChat.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
+            btnFloatingChat.BackColor = Color.FromArgb(16, 185, 129);
+            btnFloatingChat.Cursor = Cursors.Hand;
+            btnFloatingChat.FlatAppearance.BorderSize = 0;
+            btnFloatingChat.FlatStyle = FlatStyle.Flat;
+            btnFloatingChat.IconChar = FontAwesome.Sharp.IconChar.CommentDots;
+            btnFloatingChat.IconColor = Color.White;
+            btnFloatingChat.IconFont = FontAwesome.Sharp.IconFont.Auto;
+            btnFloatingChat.IconSize = 32;
+            btnFloatingChat.Location = new Point(1180, 630);
+            btnFloatingChat.Name = "btnFloatingChat";
+            btnFloatingChat.Size = new Size(60, 60);
+            btnFloatingChat.TabIndex = 99;
+            btnFloatingChat.UseVisualStyleBackColor = false;
+            btnFloatingChat.Click += btnFloatingChat_Click;
             // 
             // panelHeader
             // 
@@ -413,7 +507,9 @@
             // 
             // btnDelete
             // 
+            btnDelete.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnDelete.BackColor = Color.FromArgb(220, 53, 69);
+            btnDelete.Cursor = Cursors.Hand;
             btnDelete.FlatAppearance.BorderSize = 0;
             btnDelete.FlatStyle = FlatStyle.Flat;
             btnDelete.Font = new Font("Segoe UI", 10.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
@@ -433,7 +529,9 @@
             // 
             // btnEdit
             // 
+            btnEdit.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnEdit.BackColor = Color.FromArgb(255, 193, 7);
+            btnEdit.Cursor = Cursors.Hand;
             btnEdit.FlatAppearance.BorderSize = 0;
             btnEdit.FlatStyle = FlatStyle.Flat;
             btnEdit.Font = new Font("Segoe UI", 10.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
@@ -453,7 +551,9 @@
             // 
             // btnAdd
             // 
-            btnAdd.BackColor = Color.FromArgb(46, 204, 113);
+            btnAdd.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnAdd.BackColor = Color.FromArgb(16, 185, 129);
+            btnAdd.Cursor = Cursors.Hand;
             btnAdd.FlatAppearance.BorderSize = 0;
             btnAdd.FlatStyle = FlatStyle.Flat;
             btnAdd.Font = new Font("Segoe UI", 10.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
@@ -478,6 +578,7 @@
             ClientSize = new Size(1280, 720);
             Controls.Add(panelContent);
             Controls.Add(panelHeader);
+            Controls.Add(btnFloatingChat);
             Controls.Add(panelSidebar);
             Font = new Font("Century Gothic", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
             FormBorderStyle = FormBorderStyle.None;
@@ -508,7 +609,7 @@
         private Label label1;
         private FontAwesome.Sharp.IconPictureBox iconPictureBox1;
         private FontAwesome.Sharp.IconButton btnDataSampah;
-        private FontAwesome.Sharp.IconButton btnChatbot;
+        private FontAwesome.Sharp.IconButton btnFloatingChat;
         private FontAwesome.Sharp.IconButton btnExportPDF;
         private Label lblTitle;
         private FontAwesome.Sharp.IconButton btnClose;
@@ -528,5 +629,9 @@
         private DataGridViewTextBoxColumn colStatus;
         private FontAwesome.Sharp.IconButton btnLogout;
         private Label lblUserLogin;
+        private FontAwesome.Sharp.IconButton btnBukaMap;
+        private FontAwesome.Sharp.IconButton btnChart;
+        private FontAwesome.Sharp.IconButton btnImportCSV;
+        private FontAwesome.Sharp.IconButton btnDashboard;
     }
 }
