@@ -119,5 +119,33 @@ namespace SiJabarApp.helper
                 return false;
             }
         }
+
+        // --- TAMBAHAN BARU: UPDATE LOKASI USER ---
+        public bool UpdateUserLocation(string userId, double lat, double lon)
+        {
+            try
+            {
+                if (usersCollection == null) return false;
+                var filter = Builders<model.User>.Filter.Eq(u => u.Id, userId);
+                var update = Builders<model.User>.Update
+                    .Set(u => u.Latitude, lat)
+                    .Set(u => u.Longitude, lon);
+                
+                var result = usersCollection.UpdateOne(filter, update);
+                return result.ModifiedCount > 0;
+            }
+            catch { return false; }
+        }
+
+        // --- TAMBAHAN BARU: AMBIL SEMUA USER UNTUK MAP ---
+        public System.Collections.Generic.List<model.User> GetAllUsers()
+        {
+            try
+            {
+                if (usersCollection == null) return new System.Collections.Generic.List<model.User>();
+                return usersCollection.Find(u => u.Latitude != 0 && u.Longitude != 0).ToList();
+            }
+            catch { return new System.Collections.Generic.List<model.User>(); }
+        }
     }
 }

@@ -109,6 +109,7 @@ namespace SiJabarApp
             // 2. Init Map
             mapControl = new MapControl();
             mapControl.UserRole = this.activeRole; // Pass Role to MapControl
+            mapControl.ActiveUserId = this.activeUserId; // Pass ActiveUserId to MapControl
             mapControl.Dock = DockStyle.Fill;
             mapControl.Visible = false;
 

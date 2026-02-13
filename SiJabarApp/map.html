@@ -117,7 +117,10 @@
             red: '#e74c3c', // Merah Soft (Masuk)
             green: '#2ecc71', // Hijau Soft (Selesai)
             yellow: '#f1c40f', // Kuning Emas (Proses)
-            gray: '#95a5a6'  // Default
+            gray: '#95a5a6',  // Default
+            admin: '#2c3e50',   // Midnight Blue
+            petugas: '#d35400', // Dark Orange
+            masyarakat: '#8e44ad' // Amethyst Purple
         };
 
         // 1. INISIALISASI PETA
@@ -143,7 +146,11 @@
                     updateInputMarker(e.latlng.lat, e.latlng.lng);
 
                     if (window.chrome && window.chrome.webview) {
-                        var data = { lat: e.latlng.lat, lng: e.latlng.lng };
+                        var data = {
+                            type: 'click', // Flag manual click
+                            lat: e.latlng.lat,
+                            lng: e.latlng.lng
+                        };
                         window.chrome.webview.postMessage(JSON.stringify(data));
                     }
                 });
@@ -152,7 +159,49 @@
             }
         }
 
-        // 2. SAKLAR MODE INPUT
+        // 2. DETEKSI LOKASI OTOMATIS (GPS)
+        function locateUser() {
+            if (!navigator.geolocation) {
+                alert("Geolocation tidak didukung oleh browser Anda.");
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                function (position) {
+                    var lat = position.coords.latitude;
+                    var lon = position.coords.longitude;
+
+                    // Update Map & Marker
+                    if (map) {
+                        map.setView([lat, lon], 16);
+                        updateInputMarker(lat, lon);
+                    }
+
+                    // Send to C#
+                    if (window.chrome && window.chrome.webview) {
+                        var data = {
+                            type: 'gps', // Flag message type
+                            lat: lat,
+                            lng: lon
+                        };
+                        window.chrome.webview.postMessage(JSON.stringify(data));
+                    }
+                },
+                function (error) {
+                    var msg = "Gagal mendapatkan lokasi: ";
+                    switch (error.code) {
+                        case error.PERMISSION_DENIED: msg += "Izin ditolak."; break;
+                        case error.POSITION_UNAVAILABLE: msg += "Lokasi tidak tersedia."; break;
+                        case error.TIMEOUT: msg += "Waktu permintaan habis."; break;
+                        default: msg += "Terjadi kesalahan tidak dikenal."; break;
+                    }
+                    alert(msg);
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+        }
+
+        // 3. SAKLAR MODE INPUT
         function setInputMode(enable) {
             isInputMode = enable;
         }
@@ -173,7 +222,7 @@
                     zIndexOffset: 2000
                 }).addTo(map);
 
-                inputMarker.bindPopup("<b>Lokasi Terpilih</b><br>Klik Simpan untuk menggunakan lokasi ini.").openPopup();
+                inputMarker.bindPopup("<b>Lokasi Terpilih</b>").openPopup();
             } catch (err) {
                 console.error('updateInputMarker error:', err);
             }
@@ -212,6 +261,9 @@
                 else if (c.includes('e74c3c') || c.includes('red') || c.includes('ff0000')) finalColor = palette.red;
                 else if (c.includes('28a745') || c.includes('green') || c.includes('2ecc71')) finalColor = palette.green;
                 else if (c.includes('ffc107') || c.includes('yellow') || c.includes('gold') || c.includes('f1c40f')) finalColor = palette.yellow;
+                else if (c == 'admin' || c.includes('#2c3e50')) finalColor = palette.admin;
+                else if (c == 'petugas' || c.includes('#d35400')) finalColor = palette.petugas;
+                else if (c == 'masyarakat' || c.includes('#8e44ad')) finalColor = palette.masyarakat;
                 else finalColor = colorCodeFromCSharp;
 
                 var myIcon = createModernIcon(finalColor);

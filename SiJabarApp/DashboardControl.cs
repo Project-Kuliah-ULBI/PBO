@@ -623,6 +623,32 @@ namespace SiJabarApp
                     string script = $"addMarker({latStr}, {lonStr}, '{judul}', '{desc}', '{color}', 1000)";
                     await webViewMap.ExecuteScriptAsync(script);
                 }
+
+                // 3. LOAD MARKER USER (ROLE-BASED)
+                var mongoHelper = new MongoHelper();
+                var listUsers = mongoHelper.GetAllUsers();
+                foreach (var user in listUsers)
+                {
+                    double lat = user.Latitude;
+                    double lon = user.Longitude;
+
+                    // REPAIR COORDINATES IF NEEDED
+                    if (Math.Abs(lat) > 90 || Math.Abs(lon) > 180)
+                    {
+                        if (!RepairCoordinate(ref lat, ref lon)) continue;
+                    }
+
+                    string color = "gray"; 
+                    string role = user.Role;
+                    if (role == "Admin") color = "admin";
+                    else if (role == "Petugas") color = "petugas";
+                    else if (role == "Masyarakat") color = "masyarakat";
+
+                    string judul = CleanText(user.Fullname);
+                    string desc = $"Role: {role}";
+                    string script = $"addMarker({lat.ToString(CultureInfo.InvariantCulture)}, {lon.ToString(CultureInfo.InvariantCulture)}, '{judul}', '{desc}', '{color}', 500)";
+                    await webViewMap.ExecuteScriptAsync(script);
+                }
              } catch (Exception ex) {
                 System.Diagnostics.Debug.WriteLine("LoadMapMarkers Error: " + ex.Message);
              }

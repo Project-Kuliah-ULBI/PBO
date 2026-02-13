@@ -10,6 +10,7 @@ using Microsoft.Web.WebView2.WinForms;
 using MongoDB.Driver;
 using SiJabarApp.helper;
 using SiJabarApp.model;
+using Newtonsoft.Json.Linq;
 
 namespace SiJabarApp
 {
@@ -33,13 +34,25 @@ namespace SiJabarApp
             set 
             { 
                 _userRole = value; 
-                if (btnKelolaMarker != null)
+                if (btnKelolaMarker != null && btnUpdateLokasiUser != null)
                 {
-                    btnKelolaMarker.Visible = (_userRole == "Admin");
+                    bool isAdmin = (_userRole == "Admin");
+                    btnKelolaMarker.Visible = isAdmin;
+                    
+                    // JIKA BUKAN ADMIN, GESER TOMBOL UPDATE LOKASI KE KIRI (POSISI KELOLA MARKER)
+                    if (isAdmin) {
+                        btnUpdateLokasiUser.Location = new Point(620, 16);
+                    } else {
+                        btnUpdateLokasiUser.Location = new Point(480, 16);
+                    }
                 }
             }
         }
         private Button btnKelolaMarker;
+        private Button btnUpdateLokasiUser;
+        private bool isPickMode = false;
+        private string _activeUserId; // Need to set this from MainForm
+        public string ActiveUserId { get => _activeUserId; set => _activeUserId = value; }
 
         public MapControl()
         {
@@ -142,6 +155,35 @@ namespace SiJabarApp
             };
             panelTop.Controls.Add(btnKelolaMarker);
 
+            // TOMBOL UPDATE LOKASI USER (ALL ROLES)
+            btnUpdateLokasiUser = new Button();
+            btnUpdateLokasiUser.Text = "Update Lokasi Saya";
+            btnUpdateLokasiUser.Font = new Font("Segoe UI Semibold", 9, FontStyle.Bold);
+            btnUpdateLokasiUser.Size = new Size(150, 32);
+            btnUpdateLokasiUser.Location = new Point(620, 16); // Geser setelah Kelola Marker
+            btnUpdateLokasiUser.BackColor = Color.FromArgb(142, 68, 173); // Amethyst Purple
+            btnUpdateLokasiUser.ForeColor = Color.White;
+            btnUpdateLokasiUser.FlatStyle = FlatStyle.Flat;
+            btnUpdateLokasiUser.FlatAppearance.BorderSize = 0;
+            btnUpdateLokasiUser.Cursor = Cursors.Hand;
+            btnUpdateLokasiUser.Click += async (s, e) => {
+                if (!isPickMode)
+                {
+                    isPickMode = true;
+                    btnUpdateLokasiUser.Text = "Pilih di Peta...";
+                    btnUpdateLokasiUser.BackColor = Color.FromArgb(192, 57, 43); // Red-ish
+                    await webViewMap.ExecuteScriptAsync("setInputMode(true)");
+                    
+                    // OTOMATIS TRIGGER GPS SAAT KLIK
+                    await webViewMap.ExecuteScriptAsync("locateUser()");
+                }
+                else
+                {
+                    CancelPickMode();
+                }
+            };
+            panelTop.Controls.Add(btnUpdateLokasiUser);
+
             // 2. WEBVIEW PETA
             webViewMap = new WebView2();
             webViewMap.Dock = DockStyle.Fill;
@@ -162,6 +204,7 @@ namespace SiJabarApp
                     var fileUri = new Uri(htmlPath).AbsoluteUri + "?v=" + DateTime.Now.Ticks;
                     webViewMap.Source = new Uri(fileUri);
                     webViewMap.NavigationCompleted += WebViewMap_NavigationCompleted;
+                    webViewMap.WebMessageReceived += WebViewMap_WebMessageReceived; // HANDLE PICK MESSAGE
                 }
             }
             catch (Exception ex)
@@ -188,7 +231,11 @@ namespace SiJabarApp
                             '<div><span style=""background:#3498db""></span> TPS Resmi</div>' +
                             '<div><span style=""background:#e74c3c""></span> Laporan Baru</div>' +
                             '<div><span style=""background:#f1c40f""></span> Proses</div>' +
-                            '<div><span style=""background:#2ecc71""></span> Selesai</div>';
+                            '<div><span style=""background:#2ecc71""></span> Selesai</div>' +
+                            '<hr>' +
+                            '<div><span style=""background:#2c3e50""></span> User (Admin)</div>' +
+                            '<div><span style=""background:#d35400""></span> User (Petugas)</div>' +
+                            '<div><span style=""background:#8e44ad""></span> User (Masyarakat)</div>';
                         return div;
                     };
                     legend.addTo(map);
@@ -198,6 +245,58 @@ namespace SiJabarApp
                 await Task.Delay(800);
                 await LoadAllMarkers();
             }
+        }
+
+        private async void WebViewMap_WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            try
+            {
+                string jsonString = e.TryGetWebMessageAsString();
+                Newtonsoft.Json.Linq.JObject data = Newtonsoft.Json.Linq.JObject.Parse(jsonString);
+                
+                string msgType = data["type"]?.ToString() ?? "manual";
+                double lat = (double)data["lat"];
+                double lon = (double)data["lng"];
+
+                // SECURITY: Only process manual clicks if PickMode is actually active
+                if (msgType == "gps" || (msgType == "click" && isPickMode))
+                {
+                    var mongo = new MongoHelper();
+                    bool success = mongo.UpdateUserLocation(_activeUserId, lat, lon);
+
+                    if (success)
+                    {
+                        if (msgType == "gps")
+                        {
+                            MessageBox.Show("Lokasi GPS berhasil diperbarui!", "GPS Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        else
+                        {
+                            MessageBox.Show("Lokasi manual berhasil diperbarui!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        
+                        await LoadAllMarkers();
+                        if (isPickMode) CancelPickMode();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Gagal memperbarui lokasi di database.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error WebMessage: " + ex.Message);
+            }
+        }
+
+        private async void CancelPickMode()
+        {
+            isPickMode = false;
+            btnUpdateLokasiUser.Text = "Update Lokasi Saya";
+            btnUpdateLokasiUser.BackColor = Color.FromArgb(142, 68, 173);
+            await webViewMap.ExecuteScriptAsync("setInputMode(false)");
+            await webViewMap.ExecuteScriptAsync("removeInputMarker()");
         }
 
         private string CleanText(string input)
@@ -308,10 +407,36 @@ namespace SiJabarApp
                     string script = $"addMarker({latStr}, {lonStr}, '{judul}', '{desc}', '{color}', 1000)";
                     await webViewMap.ExecuteScriptAsync(script);
                 }
+
+                // 3. LOAD MARKER USER (ROLE-BASED)
+                var mongoHelper = new MongoHelper();
+                var listUsers = mongoHelper.GetAllUsers();
+                foreach (var user in listUsers)
+                {
+                    double lat = user.Latitude;
+                    double lon = user.Longitude;
+
+                    // REPAIR COORDINATES IF NEEDED
+                    if (Math.Abs(lat) > 90 || Math.Abs(lon) > 180)
+                    {
+                        if (!RepairCoordinate(ref lat, ref lon)) continue;
+                    }
+
+                    string color = "gray"; 
+                    string role = user.Role;
+                    if (role == "Admin") color = "admin";
+                    else if (role == "Petugas") color = "petugas";
+                    else if (role == "Masyarakat") color = "masyarakat";
+
+                    string judul = CleanText(user.Fullname);
+                    string desc = $"Role: {role}";
+                    string script = $"addMarker({lat.ToString(CultureInfo.InvariantCulture)}, {lon.ToString(CultureInfo.InvariantCulture)}, '{judul}', '{desc}', '{color}', 500)";
+                    await webViewMap.ExecuteScriptAsync(script);
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Gagal memuat marker: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("Gagal memuat marker: " + ex.Message);
             }
         }
 
