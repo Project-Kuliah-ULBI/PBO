@@ -1,4 +1,4 @@
-# 🗺️ SI - JABAR (Sistem Informasi Jawa Barat)
+# 🗺️ SI - JABAR (Sistem Informasi Sampah Jawa Barat)
 
 Aplikasi **desktop Windows** untuk pengelolaan dan pemantauan sampah di wilayah Jawa Barat. Dibangun dengan **C# WinForms (.NET 8)** menggunakan arsitektur berbasis Object-Oriented Programming.
 
