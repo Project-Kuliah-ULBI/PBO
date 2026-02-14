@@ -8,18 +8,17 @@ namespace SiJabarApp.helper
 {
     public class SupabaseHelper
     {
-        // Masukkan Connection String dari Dashboard Supabase -> Project Settings -> Database -> Connection Pooling
         private readonly string _connString = "Server=aws-1-ap-northeast-2.pooler.supabase.com;" +
                                       "Port=5432;" +
                                       "Database=postgres;" +
                                       "User Id=postgres.pglfuhnonsimzqfrjphb;" +
                                       "Password=Yuji@543GM875;" +
-                                      "Ssl Mode=Require;"; // Wajib untuk Supabase
+                                      "Ssl Mode=Require;";
 
         public SupabaseHelper()
         {
             var dataSourceBuilder = new NpgsqlDataSourceBuilder(_connString);
-            dataSourceBuilder.UseVector(); // Wajib
+            dataSourceBuilder.UseVector();
         }
 
         public async Task InsertDocumentAsync(string content, string userId, float[] vector)
@@ -47,14 +46,7 @@ namespace SiJabarApp.helper
             await using var dataSource = dataSourceBuilder.Build();
             await using var conn = await dataSource.OpenConnectionAsync();
 
-            // Modifikasi: Cari data milik User TERSEBUT ATAU data GLOBAL (system_pdf)
-            // match_documents adalah function di Supabase. 
-            // Kita Filter manual atau modifikasi panggilannya. 
-            // Karena match_documents biasanya di-set strictly via uid di SQL Function, 
-            // kita panggil dua kali atau gunakan logic OR jika SQL Function mengizinkan.
-            
-            // Cara Efektif: Panggil dua kali untuk memastikan prioritas/kelengkapan data.
-            string[] uids = { userId, "system_pdf" };
+            string[] uids = { userId, "system_pdf", "system_admin" };
             
             foreach (var uid in uids)
             {
@@ -64,8 +56,8 @@ namespace SiJabarApp.helper
                 await using var cmd = new NpgsqlCommand(sql, conn);
 
                 cmd.Parameters.AddWithValue("qv", new Vector(queryVector));
-                cmd.Parameters.AddWithValue("thresh", 0.5); // Minimal kemiripan
-                cmd.Parameters.AddWithValue("cnt", uid == "system_pdf" ? 10 : 5); // Beri lebih banyak room untuk PDF
+                cmd.Parameters.AddWithValue("thresh", 0.5); 
+                cmd.Parameters.AddWithValue("cnt", uid == "system_pdf" ? 10 : 5);
                 cmd.Parameters.AddWithValue("uid", uid);
 
                 await using var reader = await cmd.ExecuteReaderAsync();

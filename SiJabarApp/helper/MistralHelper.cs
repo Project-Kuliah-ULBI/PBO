@@ -9,9 +9,8 @@ namespace SiJabarApp.helper
     public static class MistralHelper
     {
         private static readonly HttpClient client = new HttpClient();
-        private static string _apiKey = "iWEbEkPNiwBcb7c6KTFxbs2Mz5hbznNA"; // Ganti dengan API Key
+        private static string _apiKey = "iWEbEkPNiwBcb7c6KTFxbs2Mz5hbznNA";
 
-        // 1. Fungsi Embedding (Teks -> Angka) dengan Retry Logic (Rate Limit)
         public static async Task<float[]> GetEmbedding(string text)
         {
             int maxRetries = 3;
@@ -39,13 +38,12 @@ namespace SiJabarApp.helper
                     return result.data[0].embedding.ToObject<float[]>();
                 }
                 
-                if ((int)res.StatusCode == 429) // Too Many Requests
+                if ((int)res.StatusCode == 429)
                 {
-                    if (i == maxRetries - 1) throw new System.Exception("Mistral API Rate Limit tercapai setelah beberapa kali mencoba. Silakan tunggu beberapa saat.");
+                    if (i == maxRetries - 1) throw new System.Exception("Mistral API Rate Limit reached.");
                     
-                    System.Diagnostics.Debug.WriteLine($"Rate Limit hit. Retrying in {delayMs}ms... (Attempt {i+1})");
                     await Task.Delay(delayMs);
-                    delayMs *= 2; // Exponential backoff
+                    delayMs *= 2;
                     continue;
                 }
 
@@ -53,10 +51,9 @@ namespace SiJabarApp.helper
                 throw new System.Exception($"Mistral API Error ({res.StatusCode}): {errorBody}");
             }
 
-            return null; // Should not happen
+            return null;
         }
 
-        // 2. Fungsi Chat Completion (Tanya Jawab) - Single Turn (Backward Compatible)
         public static async Task<string> GetChatResponse(string systemPrompt, string userMessage)
         {
             var messages = new List<Dictionary<string, string>>
@@ -67,12 +64,11 @@ namespace SiJabarApp.helper
             return await GetChatResponse(messages);
         }
 
-        // 3. Fungsi Chat Completion Multi-Turn (Menerima Seluruh Riwayat Percakapan)
         public static async Task<string> GetChatResponse(List<Dictionary<string, string>> messages)
         {
             var payload = new
             {
-                model = "mistral-tiny", // atau mistral-small
+                model = "mistral-tiny",
                 messages = messages,
                 temperature = 0.3
             };
@@ -80,7 +76,7 @@ namespace SiJabarApp.helper
             var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
             var res = await client.PostAsync("https://api.mistral.ai/v1/chat/completions", content);
 
-            if (!res.IsSuccessStatusCode) return "Maaf, terjadi kesalahan pada AI.";
+            if (!res.IsSuccessStatusCode) return "AI service error.";
 
             dynamic result = JsonConvert.DeserializeObject(await res.Content.ReadAsStringAsync());
             return result.choices[0].message.content;

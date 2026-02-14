@@ -61,6 +61,7 @@
             lblUserLogin = new Label();
             btnDelete = new FontAwesome.Sharp.IconButton();
             btnEdit = new FontAwesome.Sharp.IconButton();
+            btnSyncRAG = new FontAwesome.Sharp.IconButton();
             btnAdd = new FontAwesome.Sharp.IconButton();
             panelSidebar.SuspendLayout();
             panel1.SuspendLayout();
@@ -483,10 +484,10 @@
             // 
             // panel2
             // 
-            panel2.BackColor = Color.Transparent;
             panel2.Controls.Add(lblUserLogin);
             panel2.Controls.Add(btnDelete);
             panel2.Controls.Add(btnEdit);
+            panel2.Controls.Add(btnSyncRAG);
             panel2.Controls.Add(btnAdd);
             panel2.Dock = DockStyle.Top;
             panel2.Location = new Point(30, 30);
@@ -548,6 +549,28 @@
             btnEdit.TextImageRelation = TextImageRelation.ImageBeforeText;
             btnEdit.UseVisualStyleBackColor = false;
             btnEdit.Click += btnEdit_Click;
+            // 
+            // btnSyncRAG
+            // 
+            btnSyncRAG.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnSyncRAG.BackColor = Color.FromArgb(0, 123, 255);
+            btnSyncRAG.Cursor = Cursors.Hand;
+            btnSyncRAG.FlatAppearance.BorderSize = 0;
+            btnSyncRAG.FlatStyle = FlatStyle.Flat;
+            btnSyncRAG.Font = new Font("Segoe UI", 10.2F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            btnSyncRAG.ForeColor = Color.White;
+            btnSyncRAG.IconChar = FontAwesome.Sharp.IconChar.Rotate;
+            btnSyncRAG.IconColor = Color.White;
+            btnSyncRAG.IconFont = FontAwesome.Sharp.IconFont.Auto;
+            btnSyncRAG.IconSize = 18;
+            btnSyncRAG.Location = new Point(470, 7);
+            btnSyncRAG.Name = "btnSyncRAG";
+            btnSyncRAG.Size = new Size(150, 40);
+            btnSyncRAG.TabIndex = 4;
+            btnSyncRAG.Text = "Sync Knowledge";
+            btnSyncRAG.TextImageRelation = TextImageRelation.ImageBeforeText;
+            btnSyncRAG.UseVisualStyleBackColor = false;
+            btnSyncRAG.Click += btnSyncRAG_Click;
             // 
             // btnAdd
             // 
@@ -632,6 +655,7 @@
         private FontAwesome.Sharp.IconButton btnBukaMap;
         private FontAwesome.Sharp.IconButton btnChart;
         private FontAwesome.Sharp.IconButton btnImportCSV;
+        private FontAwesome.Sharp.IconButton btnSyncRAG;
         private FontAwesome.Sharp.IconButton btnDashboard;
     }
 }

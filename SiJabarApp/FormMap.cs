@@ -65,9 +65,8 @@ namespace SiJabarApp
         {
             try
             {
-                // var client = new MongoClient("mongodb://localhost:27017");
-                var client = new MongoClient("mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB");
-                var database = client.GetDatabase("SiJabarDB");
+                var client = new MongoClient(MongoHelper.ConnectionString);
+                var database = client.GetDatabase(MongoHelper.DatabaseName);
                 collectionSampah = database.GetCollection<SampahModel>("Sampah");
                 collectionMaster = database.GetCollection<MasterLokasiModel>("MasterLokasi");
             }
@@ -232,18 +231,37 @@ namespace SiJabarApp
         // =================================================================
         private async void InitMapWebView()
         {
-            await webViewMap.EnsureCoreWebView2Async();
+            int maxRetries = 3;
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                try
+                {
+                    var userDataFolder = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "SiJabarApp", "WebView2", "FormMap");
+                    var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+                    await webViewMap.EnsureCoreWebView2Async(env);
 
-            string htmlPath = Path.Combine(Directory.GetCurrentDirectory(), "map.html");
-            if (File.Exists(htmlPath))
-            {
-                var fileUri = new Uri(htmlPath).AbsoluteUri + "?v=" + DateTime.Now.Ticks;
-                webViewMap.Source = new Uri(fileUri);
-                webViewMap.NavigationCompleted += WebViewMap_NavigationCompleted;
-            }
-            else
-            {
-                MessageBox.Show("File map.html tidak ditemukan!");
+                    string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "map.html");
+                    if (File.Exists(htmlPath))
+                    {
+                        var fileUri = new Uri(htmlPath).AbsoluteUri + "?v=" + DateTime.Now.Ticks;
+                        webViewMap.Source = new Uri(fileUri);
+                        webViewMap.NavigationCompleted += WebViewMap_NavigationCompleted;
+                    }
+                    else
+                    {
+                        MessageBox.Show("File map.html tidak ditemukan!");
+                    }
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    if (attempt < maxRetries)
+                        await Task.Delay(1000);
+                    else
+                        MessageBox.Show("Failed to initialize Map: " + ex.Message);
+                }
             }
         }
 
@@ -279,11 +297,7 @@ namespace SiJabarApp
             }
         }
 
-        private string CleanText(string input)
-        {
-            if (string.IsNullOrEmpty(input)) return "-";
-            return input.Replace("'", "\\'").Replace("\"", "").Replace("\n", " ").Trim();
-        }
+        private string CleanText(string input) => StyleHelper.CleanText(input);
 
         // =================================================================
         // LOGIKA MARKER (LOAD DATA)
@@ -394,31 +408,6 @@ namespace SiJabarApp
             }
         }
 
-        // Auto-repair corrupted coordinates (locale bug stripped decimal points)
-        private bool RepairCoordinate(ref double lat, ref double lon)
-        {
-            bool latOk = Math.Abs(lat) <= 90;
-            bool lonOk = Math.Abs(lon) <= 180;
-
-            if (!latOk)
-            {
-                for (int p = 1; p <= 16; p++)
-                {
-                    double tryLat = lat / Math.Pow(10, p);
-                    if (tryLat >= -11 && tryLat <= 6) { lat = tryLat; latOk = true; break; }
-                }
-            }
-
-            if (!lonOk)
-            {
-                for (int p = 1; p <= 16; p++)
-                {
-                    double tryLon = lon / Math.Pow(10, p);
-                    if (tryLon >= 95 && tryLon <= 141) { lon = tryLon; lonOk = true; break; }
-                }
-            }
-
-            return latOk && lonOk;
-        }
+        private bool RepairCoordinate(ref double lat, ref double lon) => StyleHelper.RepairCoordinate(ref lat, ref lon);
     }
 }

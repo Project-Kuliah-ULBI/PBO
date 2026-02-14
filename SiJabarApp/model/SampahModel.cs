@@ -16,10 +16,13 @@ namespace SiJabarApp.model
         public string Status { get; set; }
         public double Latitude { get; set; }
         public double Longitude { get; set; }
+        
         [BsonDateTimeOptions(Kind = DateTimeKind.Local)]
         public DateTime Tanggal { get; set; }
+        
         [BsonDateTimeOptions(Kind = DateTimeKind.Local)]
         public DateTime JadwalAngkut { get; set; }
+        
         public string Keterangan { get; set; }
     }
 }

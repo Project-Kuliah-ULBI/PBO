@@ -89,5 +89,41 @@ namespace SiJabarApp.helper
                 tb.BorderStyle = BorderStyle.FixedSingle;
             }
         }
+        // --- TEXT UTILITY ---
+        public static string CleanText(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return "-";
+            return input.Replace("'", "\\'").Replace("\"", "").Replace("\n", " ").Trim();
+        }
+
+        // --- COORDINATE REPAIR ---
+        /// <summary>
+        /// Auto-repair coordinates corrupted by locale bug (decimal points stripped).
+        /// </summary>
+        public static bool RepairCoordinate(ref double lat, ref double lon)
+        {
+            bool latOk = Math.Abs(lat) <= 90;
+            bool lonOk = Math.Abs(lon) <= 180;
+
+            if (!latOk)
+            {
+                for (int p = 1; p <= 16; p++)
+                {
+                    double tryLat = lat / Math.Pow(10, p);
+                    if (tryLat >= -11 && tryLat <= 6) { lat = tryLat; latOk = true; break; }
+                }
+            }
+
+            if (!lonOk)
+            {
+                for (int p = 1; p <= 16; p++)
+                {
+                    double tryLon = lon / Math.Pow(10, p);
+                    if (tryLon >= 95 && tryLon <= 141) { lon = tryLon; lonOk = true; break; }
+                }
+            }
+
+            return latOk && lonOk;
+        }
     }
 }

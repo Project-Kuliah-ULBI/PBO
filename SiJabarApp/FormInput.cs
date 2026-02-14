@@ -2,7 +2,6 @@
 using System.Drawing;
 using System.Windows.Forms;
 using System.IO;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using MongoDB.Driver;
 using Microsoft.Web.WebView2.Core;
@@ -16,47 +15,35 @@ namespace SiJabarApp
 {
     public partial class FormInput : Form
     {
-        // --- VARIABEL GLOBAL ---
         private IMongoCollection<SampahModel> collectionSampah;
         private IMongoCollection<MasterLokasiModel> collectionMaster;
-
         private WebView2 webViewInput;
 
-        // --- VARIABEL STATE (USER & EDIT) ---
         private string _userId;
-        private string _userRole;     // Menyimpan Role User
-        private string _sampahId;     // ID Data (Null jika baru)
-        private bool _isEditMode;     // Penanda apakah sedang Edit
+        private string _userRole;
+        private string _sampahId;
+        private bool _isEditMode;
 
-        // --- DRAG WINDOW ---
         [DllImport("user32.DLL", EntryPoint = "ReleaseCapture")]
         private extern static void ReleaseCapture();
         [DllImport("user32.DLL", EntryPoint = "SendMessage")]
         private extern static void SendMessage(System.IntPtr hWnd, int wMsg, int wParam, int lParam);
 
-        // ====================================================================
-        // 1. KONSTRUKTOR TUNGGAL (MENERIMA 3 PARAMETER)
-        // ====================================================================
         public FormInput(string userId, string role, string sampahId = null)
         {
             InitializeComponent();
             ConnectDB();
 
-            // Simpan State
             this._userId = userId;
             this._userRole = role;
             this._sampahId = sampahId;
             this._isEditMode = !string.IsNullOrEmpty(sampahId);
 
-            // Setup UI Dasar
             SetupUI();
-            InitDataMaster(); // Isi ComboBox Wilayah
-            InitMapWebView(); // Siapkan Peta
+            InitDataMaster();
+            InitMapWebView();
+            ApplyRolePermissions();
 
-            // --- LOGIKA ROLE (KUNCI AKSES) ---
-            AturAksesRole();
-
-            // Jika Edit Mode, Load Datanya
             if (_isEditMode)
             {
                 if (lblHeaderTitle != null) lblHeaderTitle.Text = "EDIT DATA SAMPAH";
@@ -71,20 +58,16 @@ namespace SiJabarApp
             }
         }
 
-        // ====================================================================
-        // 2. SETUP & KONEKSI
-        // ====================================================================
         private void ConnectDB()
         {
             try
             {
-                // var client = new MongoClient("mongodb://localhost:27017");
-                var client = new MongoClient("mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB");
-                var db = client.GetDatabase("SiJabarDB");
+                var client = new MongoClient(MongoHelper.ConnectionString);
+                var db = client.GetDatabase(MongoHelper.DatabaseName);
                 collectionSampah = db.GetCollection<SampahModel>("Sampah");
                 collectionMaster = db.GetCollection<MasterLokasiModel>("MasterLokasi");
             }
-            catch (Exception ex) { MessageBox.Show("Error DB: " + ex.Message); }
+            catch (Exception ex) { MessageBox.Show("Database connection error: " + ex.Message); }
         }
 
         private void SetupUI()
@@ -93,70 +76,61 @@ namespace SiJabarApp
 
             if (comboWilayah != null)
             {
-                comboWilayah.DropDownStyle = ComboBoxStyle.DropDown; // Bisa ngetik
+                comboWilayah.DropDownStyle = ComboBoxStyle.DropDown;
                 comboWilayah.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
                 comboWilayah.AutoCompleteSource = AutoCompleteSource.ListItems;
                 StyleHelper.StyleInput(comboWilayah);
             }
-            // Pastikan item Status/Jenis ada
+
             if (comboStatus != null)
             {
-                if(comboStatus.Items.Count == 0)
-                    comboStatus.Items.AddRange(new object[] { "Masuk", "Dipilah", "Daur Ulang", "Selesai" });
+                comboStatus.Items.Clear();
+                comboStatus.Items.AddRange(new object[] { "Masuk", "Dipilah", "Daur Ulang", "Selesai" });
                 StyleHelper.StyleInput(comboStatus);
             }
 
             if (comboJenis != null)
             {
-                if(comboJenis.Items.Count == 0)
-                    comboJenis.Items.AddRange(new object[] { "Organik", "Anorganik", "B3", "Campuran" });
+                comboJenis.Items.Clear();
+                comboJenis.Items.AddRange(new object[] { "Organik", "Anorganik", "B3", "Campuran" });
                 StyleHelper.StyleInput(comboJenis);
             }
 
-            // Apply styles to other inputs
             if (txtLatitude != null) StyleHelper.StyleInput(txtLatitude);
             if (txtLongitude != null) StyleHelper.StyleInput(txtLongitude);
             if (txtKeterangan != null) StyleHelper.StyleInput(txtKeterangan);
             if (numBerat != null) StyleHelper.StyleInput(numBerat);
 
-            // Apply styles to buttons
             if (btnSimpan != null) StyleHelper.StyleButton(btnSimpan, StyleHelper.PrimaryColor, Color.White);
             if (btnReset != null) StyleHelper.StyleSecondaryButton(btnReset);
             if (btnBatal != null) StyleHelper.StyleButton(btnBatal, StyleHelper.DangerColor, Color.White);
             
-            // Header
             Control pnlHeader = this.Controls.Find("panelHeader", true).Length > 0 ? this.Controls.Find("panelHeader", true)[0] : null;
             if (pnlHeader != null) pnlHeader.BackColor = Color.White;
         }
 
-        // --- PENTING: LOGIKA PEMBATASAN ROLE ---
-        private void AturAksesRole()
+        private void ApplyRolePermissions()
         {
             if (_userRole == "Masyarakat")
             {
-                // Masyarakat TIDAK BOLEH ubah Status (harus 'Masuk')
                 if (comboStatus != null) comboStatus.Enabled = false;
                 if (!_isEditMode && comboStatus != null) comboStatus.SelectedItem = "Masuk";
-
-                // Masyarakat TIDAK BOLEH set Jadwal Angkut
                 if (dtpJadwal != null) dtpJadwal.Enabled = false;
             }
             else if (_userRole == "Petugas")
             {
-                // Petugas BOLEH ubah segalanya
                 if (comboStatus != null) comboStatus.Enabled = true;
                 if (dtpJadwal != null) dtpJadwal.Enabled = true;
                 if (numBerat != null) numBerat.Enabled = true;
             }
         }
 
-        // Load Data Master TPS ke ComboBox
         private void InitDataMaster()
         {
             try
             {
                 var listLokasi = collectionMaster.Find(_ => true).ToList();
-                listLokasi.Insert(0, new MasterLokasiModel { NamaTPS = "- Pilih / Ketik Baru -", Latitude = 0, Longitude = 0 });
+                listLokasi.Insert(0, new MasterLokasiModel { NamaTPS = "- Select or Type New -", Latitude = 0, Longitude = 0 });
 
                 if (comboWilayah != null)
                 {
@@ -169,9 +143,6 @@ namespace SiJabarApp
             catch { }
         }
 
-        // ====================================================================
-        // 3. LOGIKA MAP & KOORDINAT
-        // ====================================================================
         private void ComboWilayah_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (comboWilayah.SelectedItem is MasterLokasiModel lokasi)
@@ -179,7 +150,6 @@ namespace SiJabarApp
                 if (lokasi.Latitude != 0 && lokasi.Longitude != 0)
                 {
                     UpdateCoordinates(lokasi.Latitude, lokasi.Longitude);
-                    // Pindah Peta
                     if (webViewInput != null && webViewInput.CoreWebView2 != null)
                     {
                         string sLat = lokasi.Latitude.ToString(CultureInfo.InvariantCulture);
@@ -200,14 +170,33 @@ namespace SiJabarApp
             else
                 this.Controls.Add(webViewInput);
 
-            await webViewInput.EnsureCoreWebView2Async();
-
-            string htmlPath = Path.Combine(Directory.GetCurrentDirectory(), "map.html");
-            if (File.Exists(htmlPath))
+            int maxRetries = 3;
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                webViewInput.Source = new Uri(htmlPath);
-                webViewInput.NavigationCompleted += WebViewInput_NavigationCompleted;
-                webViewInput.WebMessageReceived += WebViewInput_WebMessageReceived;
+                try
+                {
+                    var userDataFolder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "SiJabarApp", "WebView2", "FormInput");
+                    var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+                    await webViewInput.EnsureCoreWebView2Async(env);
+
+                    string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "map.html");
+                    if (File.Exists(htmlPath))
+                    {
+                        webViewInput.Source = new Uri(htmlPath);
+                        webViewInput.NavigationCompleted += WebViewInput_NavigationCompleted;
+                        webViewInput.WebMessageReceived += WebViewInput_WebMessageReceived;
+                    }
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    if (attempt < maxRetries)
+                        await Task.Delay(1000);
+                    else
+                        MessageBox.Show("Failed to initialize Map: " + ex.Message);
+                }
             }
         }
 
@@ -216,9 +205,8 @@ namespace SiJabarApp
             if (e.IsSuccess)
             {
                 await webViewInput.ExecuteScriptAsync("initMap(-6.9175, 107.6191, 13)");
-                await webViewInput.ExecuteScriptAsync("setInputMode(true)"); // Mode Input Nyala
+                await webViewInput.ExecuteScriptAsync("setInputMode(true)");
 
-                // Load semua Master TPS markers (BIRU) agar terlihat di map
                 try
                 {
                     if (collectionMaster != null)
@@ -231,7 +219,7 @@ namespace SiJabarApp
                                 string lat = tps.Latitude.ToString(CultureInfo.InvariantCulture);
                                 string lon = tps.Longitude.ToString(CultureInfo.InvariantCulture);
                                 string judul = tps.NamaTPS.Replace("'", "\\'");
-                                string script = $"addMarker({lat}, {lon}, '{judul}', 'Lokasi TPS Resmi', '#3498db', 0)";
+                                string script = $"addMarker({lat}, {lon}, '{judul}', 'Official TPS Location', '#3498db', 0)";
                                 await webViewInput.ExecuteScriptAsync(script);
                             }
                         }
@@ -239,7 +227,6 @@ namespace SiJabarApp
                 }
                 catch { }
 
-                // Jika Edit, Load Marker Lama
                 if (_isEditMode && txtLatitude != null && !string.IsNullOrEmpty(txtLatitude.Text))
                 {
                     try
@@ -273,16 +260,13 @@ namespace SiJabarApp
             if (txtLongitude != null) txtLongitude.Text = lon.ToString(CultureInfo.InvariantCulture);
         }
 
-        // ====================================================================
-        // 4. LOGIKA CRUD (SIMPAN / EDIT)
-        // ====================================================================
         private async void btnSimpan_Click(object sender, EventArgs e)
         {
             string namaWilayah = comboWilayah.Text;
 
-            if (string.IsNullOrEmpty(namaWilayah) || string.IsNullOrEmpty(comboJenis.Text) || namaWilayah.StartsWith("- Pilih"))
+            if (string.IsNullOrEmpty(namaWilayah) || string.IsNullOrEmpty(comboJenis.Text) || namaWilayah.StartsWith("- Select"))
             {
-                MessageBox.Show("Wilayah dan Jenis Sampah wajib diisi!");
+                MessageBox.Show("Field yang wajib diisi masih kosong!");
                 return;
             }
 
@@ -292,21 +276,20 @@ namespace SiJabarApp
 
             if (lat == 0 && lon == 0)
             {
-                MessageBox.Show("Lokasi belum ditentukan! Klik Peta atau Pilih Wilayah.");
+                MessageBox.Show("Lokasi belum diatur!");
                 return;
             }
 
-            // --- BUILD OBJECT SAMPAH ---
+            string statusValue = comboStatus.Text;
+            string jenisValue = comboJenis.Text;
+
             var sampah = new SampahModel
             {
-                UserId = this._userId, // Gunakan UserId dari session
+                UserId = this._userId,
                 Wilayah = namaWilayah,
-                Jenis = comboJenis.Text,
+                Jenis = jenisValue,
                 Berat = (double)numBerat.Value,
-
-                // LOGIKA STATUS: Jika Masyarakat -> Paksa 'Masuk'
-                Status = (_userRole == "Masyarakat") ? "Masuk" : comboStatus.Text,
-
+                Status = (_userRole == "Masyarakat") ? "Masuk" : statusValue,
                 Latitude = lat,
                 Longitude = lon,
                 Tanggal = dtpTanggal.Value,
@@ -316,45 +299,39 @@ namespace SiJabarApp
 
             try
             {
-                // SIMPAN / UPDATE
-                if (!_isEditMode) // BARU
+                if (!_isEditMode)
                 {
                     collectionSampah.InsertOne(sampah);
                 }
-                else // EDIT
+                else
                 {
                     sampah.Id = _sampahId;
                     collectionSampah.ReplaceOne(Builders<SampahModel>.Filter.Eq(x => x.Id, _sampahId), sampah);
                 }
 
-                // --- SYNC KE SUPABASE (RAG KNOWLEDGE AI) ---
+                // AI Sync
                 try
                 {
                     string tgl = sampah.Tanggal.ToString("dd MMMM yyyy");
-                    string ragText = $"Laporan Sampah: Di wilayah {sampah.Wilayah}, " +
-                        $"tercatat sampah jenis {sampah.Jenis} seberat {sampah.Berat} Kg " +
-                        $"pada tanggal {tgl}. Status: {sampah.Status}. " +
-                        (!string.IsNullOrEmpty(sampah.Keterangan) ? $"Keterangan: {sampah.Keterangan}." : "");
+                    string ragText = $"Report: In {sampah.Wilayah}, " +
+                        $"{sampah.Jenis} waste weighs {sampah.Berat} Kg " +
+                        $"reported on {tgl}. Status: {sampah.Status}. " +
+                        (!string.IsNullOrEmpty(sampah.Keterangan) ? $"Info: {sampah.Keterangan}." : "");
 
                     float[] vector = await MistralHelper.GetEmbedding(ragText);
                     if (vector != null)
                     {
                         var supaHelper = new SupabaseHelper();
                         await supaHelper.InsertDocumentAsync(ragText, this._userId, vector);
-                        MessageBox.Show("Data berhasil di-sync ke Knowledge Base AI!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    else
-                    {
-                        MessageBox.Show("Gagal generate embedding vector (Mistral API Error). Cek kuota atau koneksi.", "RAG Sync Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show("Data berhasil disinkronkan dengan AI Knowledge Base.", "Berhasil");
                     }
                 }
                 catch (Exception exRag)
                 {
-                    MessageBox.Show("Gagal Sync ke Supabase: " + exRag.Message, "RAG Sync Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     System.Diagnostics.Debug.WriteLine("RAG Sync Error: " + exRag.Message);
                 }
 
-                // AUTO-SAVE MASTER LOKASI (Fitur Pintar)
+                // Auto-save Master Location
                 var cekMaster = collectionMaster.Find(x => x.NamaTPS.ToLower() == namaWilayah.ToLower()).FirstOrDefault();
                 if (cekMaster == null)
                 {
@@ -367,7 +344,7 @@ namespace SiJabarApp
                 this.DialogResult = DialogResult.OK;
                 this.Close();
             }
-            catch (Exception ex) { MessageBox.Show("Gagal: " + ex.Message); }
+            catch (Exception ex) { MessageBox.Show("Terjadi kesalahan: " + ex.Message); }
         }
 
         private void LoadDataForEdit()
@@ -376,24 +353,18 @@ namespace SiJabarApp
             if (data != null)
             {
                 comboWilayah.Text = data.Wilayah;
+                
                 comboJenis.Text = data.Jenis;
                 numBerat.Value = (decimal)data.Berat;
                 comboStatus.Text = data.Status;
 
                 UpdateCoordinates(data.Latitude, data.Longitude);
-
                 dtpTanggal.Value = data.Tanggal;
                 dtpJadwal.Value = (data.JadwalAngkut == DateTime.MinValue) ? DateTime.Now : data.JadwalAngkut;
                 txtKeterangan.Text = data.Keterangan;
-
-                // Pastikan UserId tidak berubah saat edit admin/petugas
-                // this._userId = data.UserId; (Opsional, tergantung kebijakan)
             }
         }
 
-        // ====================================================================
-        // 5. WINDOW CONTROLS
-        // ====================================================================
         private void btnReset_Click(object sender, EventArgs e)
         {
             if (txtLatitude != null) txtLatitude.Text = "0";

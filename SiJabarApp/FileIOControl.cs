@@ -9,7 +9,6 @@ namespace SiJabarApp
 {
     public partial class FileIOControl : UserControl
     {
-        // Events to communicate with MainForm
         public event EventHandler OnExportPdfRequested;
         public event EventHandler OnDataImported;
 
@@ -19,7 +18,6 @@ namespace SiJabarApp
         private Button btnExport;
         private OpenFileDialog openFileDialog;
 
-        // Visual Elements (Promoted to Fields)
         private Label lblTitle;
         private GroupBox grpExport;
         private GroupBox grpImport;
@@ -35,33 +33,31 @@ namespace SiJabarApp
             this.BackColor = Color.White;
             this.Padding = new Padding(30);
 
-            // 1. TITLE
             lblTitle = new Label();
-            lblTitle.Text = "Import & Export Data";
+            lblTitle.Text = "Impor & Ekspor Data";
             lblTitle.Font = new Font("Segoe UI", 18, FontStyle.Bold);
             lblTitle.ForeColor = Color.FromArgb(44, 62, 80);
             lblTitle.AutoSize = true;
             lblTitle.Location = new Point(30, 20);
             this.Controls.Add(lblTitle);
 
-            // 2. EXPORT SECTION
-            grpExport = CreateGroupBox("Export Data", 80);
+            grpExport = CreateGroupBox("Ekspor Data", 80);
             grpExport.Size = new Size(740, 200); 
-            grpExport.Visible = false; // Default Hidden
+            grpExport.Visible = false;
 
             Label lblExportInfo = new Label();
-            lblExportInfo.Text = "Ekspor data tabel sampah saat ini ke format PDF laporan.\nPastikan data tabel sudah sesuai sebelum melakukan ekspor.";
+            lblExportInfo.Text = "Ekspor data tabel sampah saat ini ke format laporan PDF.\nPastikan data tabel sudah benar sebelum mengekspor.";
             lblExportInfo.Font = new Font("Segoe UI", 10);
             lblExportInfo.Location = new Point(20, 30);
             lblExportInfo.AutoSize = true;
             grpExport.Controls.Add(lblExportInfo);
 
             btnExport = new Button();
-            btnExport.Text = "Export PDF";
+            btnExport.Text = "Ekspor PDF";
             btnExport.Font = new Font("Segoe UI", 10, FontStyle.Bold);
             btnExport.Size = new Size(150, 45);
             btnExport.Location = new Point(20, 80);
-            btnExport.BackColor = Color.FromArgb(231, 76, 60); // Red
+            btnExport.BackColor = Color.FromArgb(231, 76, 60);
             btnExport.ForeColor = Color.White;
             btnExport.FlatStyle = FlatStyle.Flat;
             btnExport.FlatAppearance.BorderSize = 0;
@@ -71,12 +67,10 @@ namespace SiJabarApp
 
             this.Controls.Add(grpExport);
 
-            // 3. IMPORT SECTION
-            grpImport = CreateGroupBox("Import CSV & PDF", 80); // Same Y position
+            grpImport = CreateGroupBox("Impor CSV & PDF", 80);
             grpImport.Size = new Size(740, 320);
-            grpImport.Visible = false; // Default Hidden
+            grpImport.Visible = false;
 
-            // DROP ZONE PANEL
             panelDropZone = new Panel();
             panelDropZone.Location = new Point(20, 30);
             panelDropZone.Size = new Size(grpImport.Width - 40, 180);
@@ -85,26 +79,23 @@ namespace SiJabarApp
             panelDropZone.BorderStyle = BorderStyle.FixedSingle;
             panelDropZone.AllowDrop = true;
             
-            // Events
             panelDropZone.DragEnter += PanelDropZone_DragEnter;
             panelDropZone.DragLeave += PanelDropZone_DragLeave;
             panelDropZone.DragDrop += PanelDropZone_DragDrop;
 
-            // Labels inside Drop Zone
             lblDropInfo = new Label();
-            lblDropInfo.Text = "Drag & Drop file CSV/PDF di sini\nAtau klik tombol di bawah";
+            lblDropInfo.Text = "Drag & Drop CSV/PDF file here\nOr click the button below";
             lblDropInfo.TextAlign = ContentAlignment.MiddleCenter;
             lblDropInfo.Font = new Font("Segoe UI", 12, FontStyle.Bold);
             lblDropInfo.ForeColor = Color.Gray;
             lblDropInfo.AutoSize = false;
             lblDropInfo.Dock = DockStyle.Fill;
-            lblDropInfo.Click += (s, e) => OpenCsvDialog();
+            lblDropInfo.Click += (s, e) => OpenFileDialog();
             panelDropZone.Controls.Add(lblDropInfo);
 
             grpImport.Controls.Add(panelDropZone);
             this.Controls.Add(grpImport);
 
-            // Browse Button (Manual)
             btnBrowse = new Button();
             btnBrowse.Text = "Pilih File...";
             btnBrowse.Location = new Point(20, 220);
@@ -113,12 +104,11 @@ namespace SiJabarApp
             btnBrowse.FlatStyle = FlatStyle.Flat;
             btnBrowse.BackColor = Color.FromArgb(46, 204, 113);
             btnBrowse.ForeColor = Color.White;
-            btnBrowse.Click += (s, e) => OpenCsvDialog();
+            btnBrowse.Click += (s, e) => OpenFileDialog();
             grpImport.Controls.Add(btnBrowse);
 
-            // AI Knowledge Info Label
             Label lblAiInfo = new Label();
-            lblAiInfo.Text = "ℹ️ Note: Data CSV/PDF yang diimpor akan diproses menjadi Knowledge AI (RAG).";
+            lblAiInfo.Text = "ℹ️ Catatan: Data CSV/PDF yang diimpor akan diproses ke AI Knowledge (RAG).";
             lblAiInfo.Font = new Font("Segoe UI", 9, FontStyle.Italic);
             lblAiInfo.ForeColor = Color.DimGray;
             lblAiInfo.AutoSize = true;
@@ -128,14 +118,14 @@ namespace SiJabarApp
 
         public void ShowImportMode()
         {
-            lblTitle.Text = "Import Data CSV/PDF";
+            lblTitle.Text = "Impor Data CSV/PDF";
             grpImport.Visible = true;
             grpExport.Visible = false;
         }
 
         public void ShowExportMode()
         {
-            lblTitle.Text = "Export Laporan PDF";
+            lblTitle.Text = "Ekspor Laporan PDF";
             grpImport.Visible = false;
             grpExport.Visible = true;
         }
@@ -157,13 +147,13 @@ namespace SiJabarApp
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
                 e.Effect = DragDropEffects.Copy;
-                panelDropZone.BackColor = Color.FromArgb(230, 240, 255); // Highlight Blue
+                panelDropZone.BackColor = Color.FromArgb(230, 240, 255);
             }
         }
 
         private void PanelDropZone_DragLeave(object sender, EventArgs e)
         {
-            panelDropZone.BackColor = Color.FromArgb(248, 249, 250); // Reset
+            panelDropZone.BackColor = Color.FromArgb(248, 249, 250);
         }
 
         private async void PanelDropZone_DragDrop(object sender, DragEventArgs e)
@@ -176,12 +166,12 @@ namespace SiJabarApp
             }
         }
 
-        private void OpenCsvDialog()
+        private void OpenFileDialog()
         {
             openFileDialog = new OpenFileDialog
             {
                 Filter = "Data Files (*.csv;*.pdf)|*.csv;*.pdf|CSV Files (*.csv)|*.csv|PDF Files (*.pdf)|*.pdf",
-                Title = "Pilih File CSV/PDF untuk Knowledge Base AI"
+                Title = "Pilih File CSV/PDF untuk Basis Pengetahuan AI"
             };
 
             if (openFileDialog.ShowDialog() == DialogResult.OK)
@@ -195,11 +185,11 @@ namespace SiJabarApp
             string ext = Path.GetExtension(filePath).ToLower();
             if (ext != ".csv" && ext != ".pdf")
             {
-                MessageBox.Show("Harap pilih file berformat .CSV atau .PDF!", "Format Salah", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Silakan pilih file .CSV atau .PDF!", "Format Tidak Valid", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            lblDropInfo.Text = "Sedang memproses data... Mohon tunggu.";
+            lblDropInfo.Text = "Memproses data... Harap tunggu.";
             this.Enabled = false;
 
             try
@@ -208,13 +198,13 @@ namespace SiJabarApp
                 {
                     var ingestion = new CsvIngestionHelper();
                     await ingestion.ProcessOpenDataCsv(filePath);
-                    MessageBox.Show("Data CSV berhasil diproses dan disimpan ke Knowledge Base!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("Data CSV diproses dan disimpan ke Basis Pengetahuan!", "Berhasil", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else if (ext == ".pdf")
                 {
                     var ingestion = new PdfIngestionHelper();
                     await ingestion.ProcessPdf(filePath);
-                    MessageBox.Show("File PDF berhasil diproses dan disimpan ke Knowledge Base!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("File PDF diproses dan disimpan ke Basis Pengetahuan!", "Berhasil", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 
                 OnDataImported?.Invoke(this, EventArgs.Empty);
@@ -225,7 +215,7 @@ namespace SiJabarApp
             }
             finally
             {
-                lblDropInfo.Text = "Drag & Drop file CSV/PDF di sini\nAtau klik tombol di bawah";
+                lblDropInfo.Text = "Tarik & Lepas file CSV/PDF di sini\nAtau klik tombol di bawah";
                 this.Enabled = true;
             }
         }

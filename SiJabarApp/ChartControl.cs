@@ -28,38 +28,31 @@ namespace SiJabarApp
 
         private void InitializeComponent()
         {
-            this.BackColor = Color.FromArgb(240, 242, 245); // Light Gray Background
+            this.BackColor = Color.FromArgb(240, 242, 245);
             this.Dock = DockStyle.Fill;
             this.Padding = new Padding(10);
 
-            // 1. Table Layout (2 Rows, 2 Columns)
             tableLayout = new TableLayoutPanel();
             tableLayout.Dock = DockStyle.Fill;
             tableLayout.ColumnCount = 2;
             tableLayout.RowCount = 2;
             tableLayout.Padding = new Padding(5);
             
-            // Kolom 50:50
             tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             tableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             
-            // Baris 1 (50%), Baris 2 (50%)
             tableLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
             tableLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
 
             this.Controls.Add(tableLayout);
 
-            // 2. Initialize Charts
-            chartBar = CreateChart("Grafik Batang: Total Berat per Jenis", "Jenis Sampah", "Berat (Kg)");
-            chartPie = CreateChart("Pie Chart: Persentase Jenis Sampah", "", "");
-            chartLine = CreateChart("Statistik Bulanan: Tren Sampah per Wilayah", "Tanggal (Hari)", "Berat (Kg)");
+            chartBar = CreateChart("Grafik Batang: Total Berat per Jenis", "Jenis Sampah", "Berat (kg)");
+            chartPie = CreateChart("Grafik Lingkaran: Persentase Jenis Sampah", "", "");
+            chartLine = CreateChart("Statistik Bulanan: Tren Sampah per Wilayah", "Hari", "Berat (kg)");
 
-            // 3. Add to Layout with CARDS (Panels)
-            // Top Left
             tableLayout.Controls.Add(CreateDataCard(chartBar), 0, 0); 
-            // Top Right
             tableLayout.Controls.Add(CreateDataCard(chartPie), 1, 0);
-            // Bottom (Span 2 Cols)
+            
             Panel pnlBottom = CreateDataCard(chartLine);
             tableLayout.Controls.Add(pnlBottom, 0, 1);
             tableLayout.SetColumnSpan(pnlBottom, 2);
@@ -71,9 +64,8 @@ namespace SiJabarApp
             card.Dock = DockStyle.Fill;
             card.BackColor = Color.White;
             card.Padding = new Padding(10);
-            card.Margin = new Padding(10); // Spacing between cards
+            card.Margin = new Padding(10);
             
-            // Rounded Border effect handled by padding/margin visually
             content.Dock = DockStyle.Fill;
             card.Controls.Add(content);
             
@@ -97,7 +89,6 @@ namespace SiJabarApp
             
             chart.ChartAreas.Add(area);
 
-            // Simpan Judul Asli di Tag untuk reset
             Title title = new Title(titleText);
             title.Font = new Font("Segoe UI", 12, FontStyle.Bold);
             title.ForeColor = Color.DarkSlateGray;
@@ -116,9 +107,8 @@ namespace SiJabarApp
         {
             try
             {
-                // var client = new MongoClient("mongodb://localhost:27017");
-                var client = new MongoClient("mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB");
-                var database = client.GetDatabase("SiJabarDB");
+                var client = new MongoClient(MongoHelper.ConnectionString);
+                var database = client.GetDatabase(MongoHelper.DatabaseName);
                 collectionSampah = database.GetCollection<SampahModel>("Sampah");
             }
             catch (Exception ex)
@@ -127,75 +117,102 @@ namespace SiJabarApp
             }
         }
 
-        public void LoadDataToChart()
+        public async void LoadDataToChart()
         {
             if (collectionSampah == null) return;
 
             try
             {
-                var dataList = collectionSampah.Find(_ => true).ToList();
+                var dataList = await collectionSampah.Find(_ => true).ToListAsync();
                 if (dataList.Count == 0) return;
 
-                // ---------------------------------------------
-                // 1. CHART BATANG (Total Berat per Jenis)
-                // ---------------------------------------------
+                // Debug: tampilkan jumlah data dan jenis unik
+                var allJenis = dataList.Select(x => x.Jenis).Where(j => !string.IsNullOrEmpty(j)).Distinct().ToList();
+                System.Diagnostics.Debug.WriteLine($"Total data: {dataList.Count}, Jenis unik: {string.Join(", ", allJenis)}");
+
                 var dataPerJenis = dataList
-                    .GroupBy(x => x.Jenis)
-                    .Select(g => new { Jenis = g.Key, Total = g.Sum(x => x.Berat) })
+                    .Where(x => !string.IsNullOrEmpty(x.Jenis))
+                    .GroupBy(x => x.Jenis.Trim())
+                    .Select(g => new { Jenis = g.Key, Total = Math.Round(g.Sum(x => x.Berat), 1) })
                     .OrderByDescending(x => x.Total)
                     .ToList();
 
+                // Palet warna untuk konsistensi warna antara Bar dan Pie
+                Color[] chartColors = {
+                    Color.FromArgb(54, 162, 235),    // biru
+                    Color.FromArgb(255, 159, 64),    // oranye
+                    Color.FromArgb(255, 99, 132),    // merah/pink
+                    Color.FromArgb(0, 100, 80),      // hijau tua
+                    Color.FromArgb(201, 203, 207),   // abu-abu
+                    Color.FromArgb(153, 102, 255),   // ungu
+                    Color.FromArgb(255, 205, 86),    // kuning
+                    Color.FromArgb(75, 192, 192),    // teal
+                };
+
+                // ============ BAR CHART ============
                 chartBar.Series.Clear();
+                chartBar.Legends["Legend1"].Enabled = false; // sembunyikan legend bar
+                chartBar.ChartAreas["MainArea"].AxisX.LabelStyle.Angle = -30;
+                chartBar.ChartAreas["MainArea"].AxisX.LabelStyle.Font = new Font("Segoe UI", 8);
+
                 Series seriesBar = new Series("Berat")
                 {
                     ChartType = SeriesChartType.Column,
                     IsValueShownAsLabel = true,
-                    Color = Color.FromArgb(16, 185, 129) // Emerald
+                    LabelFormat = "N1",
                 };
-                foreach (var item in dataPerJenis) seriesBar.Points.AddXY(item.Jenis, item.Total);
+                seriesBar.SmartLabelStyle.Enabled = true;
+                seriesBar["PointWidth"] = "0.6";
+
+                for (int i = 0; i < dataPerJenis.Count; i++)
+                {
+                    var item = dataPerJenis[i];
+                    var pt = new DataPoint();
+                    pt.SetValueXY(i + 1, item.Total);
+                    pt.AxisLabel = item.Jenis;
+                    pt.Color = chartColors[i % chartColors.Length];
+                    seriesBar.Points.Add(pt);
+                }
                 chartBar.Series.Add(seriesBar);
 
-                // ---------------------------------------------
-                // 2. PIE CHART (Persentase per Jenis)
-                // ---------------------------------------------
+                // ============ PIE CHART ============
                 chartPie.Series.Clear();
                 Series seriesPie = new Series("Persentase")
                 {
                     ChartType = SeriesChartType.Pie,
                     IsValueShownAsLabel = true,
-                    LabelFormat = "{0:P0}", // Menampilkan angka persen (misal 30%)
-                    LegendText = "#VALX" // Show Name in Legend
+                    LabelFormat = "{0:P0}",
+                    LegendText = "#VALX"
                 };
-                // Make pie labels outside to avoid overlap
                 seriesPie["PieLabelStyle"] = "Outside"; 
-                
-                foreach (var item in dataPerJenis) seriesPie.Points.AddXY(item.Jenis, item.Total);
+                seriesPie.SmartLabelStyle.Enabled = true;
+
+                for (int i = 0; i < dataPerJenis.Count; i++)
+                {
+                    var item = dataPerJenis[i];
+                    int idx = seriesPie.Points.AddXY(item.Jenis, item.Total);
+                    seriesPie.Points[idx].Color = chartColors[i % chartColors.Length];
+                }
                 chartPie.Series.Add(seriesPie);
 
-                // ---------------------------------------------
-                // 3. LINE CHART (Statistik Bulanan per Wilayah)
-                // ---------------------------------------------
+                // ============ LINE CHART ============
                 chartLine.Series.Clear();
-                // Reset Title
                 chartLine.Titles[0].Text = chartLine.Tag?.ToString(); 
                 
-                // Filter bulan ini
                 var currentMonth = DateTime.Now.Month;
                 var currentYear = DateTime.Now.Year;
                 
-                // Group by Wilayah & Tanggal (Day)
-                var dataBulanan = dataList
+                var rawDataBulanan = dataList
                     .Where(x => x.Tanggal.Month == currentMonth && x.Tanggal.Year == currentYear)
                     .Select(x => new { 
-                        Wilayah = x.Wilayah, 
+                        Wilayah = x.Wilayah ?? "Unknown", 
                         Tanggal = x.Tanggal.Day, 
                         Berat = x.Berat 
                     })
-                    .GroupBy(x => x.Wilayah)
                     .ToList();
 
-                // Generate Series per Wilayah
-                foreach (var wilayahGroup in dataBulanan)
+                var dataPerWilayah = rawDataBulanan.GroupBy(x => x.Wilayah).ToList();
+                foreach (var wilayahGroup in dataPerWilayah)
                 {
                     Series seriesLine = new Series(wilayahGroup.Key) 
                     {
@@ -211,23 +228,18 @@ namespace SiJabarApp
                         .OrderBy(x => x.Hari)
                         .ToList();
 
-                    foreach (var d in dailyData)
-                    {
-                        seriesLine.Points.AddXY(d.Hari, d.Total);
-                    }
-
+                    foreach (var d in dailyData) seriesLine.Points.AddXY(d.Hari, d.Total);
                     chartLine.Series.Add(seriesLine);
                 }
 
-                // Jika data kosong
-                if (dataBulanan.Count == 0)
+                if (!rawDataBulanan.Any())
                 {
-                    chartLine.Titles[0].Text += $" (Data Bulan {currentMonth}/{currentYear} Kosong)";
+                    chartLine.Titles[0].Text += $" (Tidak ada data untuk {currentMonth}/{currentYear})";
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Gagal memuat chart: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("Failed to load chart: " + ex.Message);
             }
         }
     }
