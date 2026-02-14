@@ -15,13 +15,11 @@ namespace SiJabarApp
 {
     public partial class MapControl : UserControl
     {
-        // --- KOMPONEN UI ---
         private WebView2 webViewMap;
         private ComboBox comboFilterStatus;
         private Button btnRefresh;
         private Panel panelTop;
 
-        // --- DATABASE ---
         private IMongoCollection<SampahModel> collectionSampah;
         private IMongoCollection<MasterLokasiModel> collectionMaster;
         private bool isMapReady = false;
@@ -33,13 +31,24 @@ namespace SiJabarApp
             set 
             { 
                 _userRole = value; 
-                if (btnKelolaMarker != null)
+                if (btnKelolaMarker != null && btnUpdateLokasiUser != null)
                 {
-                    btnKelolaMarker.Visible = (_userRole == "Admin");
+                    bool isAdmin = (_userRole == "Admin");
+                    btnKelolaMarker.Visible = isAdmin;
+                    
+                    if (isAdmin) {
+                        btnUpdateLokasiUser.Location = new Point(620, 16);
+                    } else {
+                        btnUpdateLokasiUser.Location = new Point(480, 16);
+                    }
                 }
             }
         }
         private Button btnKelolaMarker;
+        private Button btnUpdateLokasiUser;
+        private bool isPickMode = false;
+        private string _activeUserId;
+        public string ActiveUserId { get => _activeUserId; set => _activeUserId = value; }
 
         public MapControl()
         {
@@ -58,21 +67,16 @@ namespace SiJabarApp
         {
             try
             {
-                // var client = new MongoClient("mongodb://localhost:27017");
-                var client = new MongoClient("mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB");
-                var database = client.GetDatabase("SiJabarDB");
+                var client = new MongoClient(MongoHelper.ConnectionString);
+                var database = client.GetDatabase(MongoHelper.DatabaseName);
                 collectionSampah = database.GetCollection<SampahModel>("Sampah");
                 collectionMaster = database.GetCollection<MasterLokasiModel>("MasterLokasi");
             }
-            catch (Exception ex) { MessageBox.Show("Error Koneksi DB: " + ex.Message); }
+            catch (Exception ex) { MessageBox.Show("DB Connection Error: " + ex.Message); }
         }
 
-        // =================================================================
-        // MEMBANGUN UI (MODERN STYLE)
-        // =================================================================
         private void InitUI()
         {
-            // 1. PANEL ATAS (FILTER & REFRESH)
             panelTop = new Panel();
             panelTop.Dock = DockStyle.Top;
             panelTop.Height = 60; 
@@ -80,7 +84,6 @@ namespace SiJabarApp
             panelTop.Padding = new Padding(20, 10, 20, 10);
             this.Controls.Add(panelTop);
 
-            // LABEL FILTER
             Label lblFilter = new Label();
             lblFilter.Text = "Filter Status:";
             lblFilter.AutoSize = true;
@@ -89,60 +92,81 @@ namespace SiJabarApp
             lblFilter.ForeColor = Color.FromArgb(80, 80, 80);
             panelTop.Controls.Add(lblFilter);
 
-            // COMBOBOX
             comboFilterStatus = new ComboBox();
             comboFilterStatus.Items.AddRange(new object[] { "Semua Status", "Masuk", "Dipilah", "Daur Ulang", "Selesai" });
             comboFilterStatus.SelectedIndex = 0;
             comboFilterStatus.DropDownStyle = ComboBoxStyle.DropDownList;
             comboFilterStatus.Font = new Font("Segoe UI", 10);
             comboFilterStatus.Width = 180;
-            comboFilterStatus.Location = new Point(140, 17); // Geser kanan (prev: 120)
+            comboFilterStatus.Location = new Point(140, 17);
             comboFilterStatus.SelectedIndexChanged += async (s, e) => {
                 await LoadAllMarkers();
             };
             panelTop.Controls.Add(comboFilterStatus);
 
-            // TOMBOL REFRESH
             btnRefresh = new Button();
-            btnRefresh.Text = "Refresh Peta";
+            btnRefresh.Text = "Refresh Map";
             btnRefresh.Font = new Font("Segoe UI Semibold", 9, FontStyle.Bold);
             btnRefresh.Size = new Size(120, 32);
-            btnRefresh.Location = new Point(340, 16); // Geser kanan (prev: 320)
+            btnRefresh.Location = new Point(340, 16);
             btnRefresh.BackColor = Color.FromArgb(33, 150, 243); 
             btnRefresh.ForeColor = Color.White;
             btnRefresh.FlatStyle = FlatStyle.Flat;
             btnRefresh.FlatAppearance.BorderSize = 0;
             btnRefresh.Cursor = Cursors.Hand;
             btnRefresh.Click += async (s, e) => {
-                btnRefresh.Text = "Loading...";
+                btnRefresh.Text = "Memuat...";
                 btnRefresh.Enabled = false;
                 await LoadAllMarkers();
-                btnRefresh.Text = "Refresh Peta";
+                btnRefresh.Text = "Muat Ulang Peta";
                 btnRefresh.Enabled = true;
             };
             panelTop.Controls.Add(btnRefresh);
 
-            // TOMBOL KELOLA MARKER (ADMIN ONLY)
             btnKelolaMarker = new Button();
             btnKelolaMarker.Text = "Kelola Marker";
             btnKelolaMarker.Font = new Font("Segoe UI Semibold", 9, FontStyle.Bold);
             btnKelolaMarker.Size = new Size(120, 32);
-            btnKelolaMarker.Location = new Point(480, 16); // Geser kanan setelah Refresh
-            btnKelolaMarker.BackColor = Color.FromArgb(46, 204, 113); // Green
+            btnKelolaMarker.Location = new Point(480, 16);
+            btnKelolaMarker.BackColor = Color.FromArgb(46, 204, 113);
             btnKelolaMarker.ForeColor = Color.White;
             btnKelolaMarker.FlatStyle = FlatStyle.Flat;
             btnKelolaMarker.FlatAppearance.BorderSize = 0;
             btnKelolaMarker.Cursor = Cursors.Hand;
-            btnKelolaMarker.Visible = false; // Default Hidden
+            btnKelolaMarker.Visible = false;
             btnKelolaMarker.Click += async (s, e) => {
                 FormMasterLokasi frm = new FormMasterLokasi();
                 frm.ShowDialog();
-                // Refresh map after form closes — await to ensure markers fully loaded
                 await LoadAllMarkers();
             };
             panelTop.Controls.Add(btnKelolaMarker);
 
-            // 2. WEBVIEW PETA
+            btnUpdateLokasiUser = new Button();
+            btnUpdateLokasiUser.Text = "Update My Location";
+            btnUpdateLokasiUser.Font = new Font("Segoe UI Semibold", 9, FontStyle.Bold);
+            btnUpdateLokasiUser.Size = new Size(150, 32);
+            btnUpdateLokasiUser.Location = new Point(620, 16);
+            btnUpdateLokasiUser.BackColor = Color.FromArgb(142, 68, 173);
+            btnUpdateLokasiUser.ForeColor = Color.White;
+            btnUpdateLokasiUser.FlatStyle = FlatStyle.Flat;
+            btnUpdateLokasiUser.FlatAppearance.BorderSize = 0;
+            btnUpdateLokasiUser.Cursor = Cursors.Hand;
+            btnUpdateLokasiUser.Click += async (s, e) => {
+                if (!isPickMode)
+                {
+                    isPickMode = true;
+                    btnUpdateLokasiUser.Text = "Pilih di Peta...";
+                    btnUpdateLokasiUser.BackColor = Color.FromArgb(192, 57, 43);
+                    await webViewMap.ExecuteScriptAsync("setInputMode(true)");
+                    await webViewMap.ExecuteScriptAsync("locateUser()");
+                }
+                else
+                {
+                    CancelPickMode();
+                }
+            };
+            panelTop.Controls.Add(btnUpdateLokasiUser);
+
             webViewMap = new WebView2();
             webViewMap.Dock = DockStyle.Fill;
             this.Controls.Add(webViewMap);
@@ -153,20 +177,37 @@ namespace SiJabarApp
 
         private async void InitMapWebView()
         {
-            try
+            int maxRetries = 3;
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                await webViewMap.EnsureCoreWebView2Async();
-                string htmlPath = Path.Combine(Directory.GetCurrentDirectory(), "map.html");
-                if (File.Exists(htmlPath))
+                try
                 {
-                    var fileUri = new Uri(htmlPath).AbsoluteUri + "?v=" + DateTime.Now.Ticks;
-                    webViewMap.Source = new Uri(fileUri);
-                    webViewMap.NavigationCompleted += WebViewMap_NavigationCompleted;
+                    var userDataFolder = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "SiJabarApp", "WebView2", "MapControl");
+                    var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+                    await webViewMap.EnsureCoreWebView2Async(env);
+                    string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "map.html");
+                    if (File.Exists(htmlPath))
+                    {
+                        var fileUri = new Uri(htmlPath).AbsoluteUri + "?v=" + DateTime.Now.Ticks;
+                        webViewMap.Source = new Uri(fileUri);
+                        webViewMap.NavigationCompleted += WebViewMap_NavigationCompleted;
+                        webViewMap.WebMessageReceived += WebViewMap_WebMessageReceived;
+                    }
+                    return; // Success, exit retry loop
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Gagal inisialisasi Map: " + ex.Message);
+                catch (Exception ex)
+                {
+                    if (attempt < maxRetries)
+                    {
+                        await Task.Delay(1000); // Wait 1 second before retry
+                    }
+                    else
+                    {
+                        MessageBox.Show("Failed to initialize Map: " + ex.Message);
+                    }
+                }
             }
         }
 
@@ -175,20 +216,22 @@ namespace SiJabarApp
             if (e.IsSuccess)
             {
                 isMapReady = true;
-                // Init Peta Bandung - View Only
                 await webViewMap.ExecuteScriptAsync("initMap(-6.9175, 107.6191, 13)");
-                await webViewMap.ExecuteScriptAsync("setInputMode(false)"); // Map view = view-only
+                await webViewMap.ExecuteScriptAsync("setInputMode(false)");
                 
-                // Init Legend
                 string legendScript = @"
                     var legend = L.control({position: 'bottomleft'});
                     legend.onAdd = function (map) {
                         var div = L.DomUtil.create('div', 'legend');
-                        div.innerHTML = '<h4>Keterangan</h4>' +
+                        div.innerHTML = '<h4>Legend</h4>' +
                             '<div><span style=""background:#3498db""></span> TPS Resmi</div>' +
                             '<div><span style=""background:#e74c3c""></span> Laporan Baru</div>' +
                             '<div><span style=""background:#f1c40f""></span> Proses</div>' +
-                            '<div><span style=""background:#2ecc71""></span> Selesai</div>';
+                            '<div><span style=""background:#2ecc71""></span> Selesai</div>' +
+                            '<hr>' +
+                            '<div><span style=""background:#2c3e50""></span> User (Admin)</div>' +
+                            '<div><span style=""background:#d35400""></span> User (Petugas)</div>' +
+                            '<div><span style=""background:#8e44ad""></span> User (Masyarakat)</div>';
                         return div;
                     };
                     legend.addTo(map);
@@ -200,22 +243,65 @@ namespace SiJabarApp
             }
         }
 
-        private string CleanText(string input)
+        private async void WebViewMap_WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
-            if (string.IsNullOrEmpty(input)) return "-";
-            return input.Replace("'", "\\'").Replace("\"", "").Replace("\n", " ").Trim();
+            try
+            {
+                string jsonString = e.TryGetWebMessageAsString();
+                Newtonsoft.Json.Linq.JObject data = Newtonsoft.Json.Linq.JObject.Parse(jsonString);
+                
+                string msgType = data["type"]?.ToString() ?? "manual";
+                double lat = (double)data["lat"];
+                double lon = (double)data["lng"];
+
+                if (msgType == "gps" || (msgType == "click" && isPickMode))
+                {
+                    var mongo = new MongoHelper();
+                    bool success = await mongo.UpdateUserLocationAsync(_activeUserId, lat, lon);
+
+                    if (success)
+                    {
+                        if (msgType == "gps")
+                        {
+                            MessageBox.Show("Lokasi GPS berhasil diperbarui!", "GPS Berhasil", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        else
+                        {
+                            MessageBox.Show("Lokasi manual berhasil diperbarui!", "Berhasil", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        
+                        await LoadAllMarkers();
+                        if (isPickMode) CancelPickMode();
+                    }
+                    else
+                    {
+                        MessageBox.Show("Gagal memperbarui lokasi di database.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error WebMessage: " + ex.Message);
+            }
         }
 
-        // =================================================================
-        // LOGIKA MARKER (LOAD DATA)
-        // =================================================================
+        private async void CancelPickMode()
+        {
+            isPickMode = false;
+            btnUpdateLokasiUser.Text = "Update My Location";
+            btnUpdateLokasiUser.BackColor = Color.FromArgb(142, 68, 173);
+            await webViewMap.ExecuteScriptAsync("setInputMode(false)");
+            await webViewMap.ExecuteScriptAsync("removeInputMarker()");
+        }
+
+        private string CleanText(string input) => StyleHelper.CleanText(input);
+
         public async Task LoadAllMarkers()
         {
             if (!isMapReady || collectionSampah == null || collectionMaster == null) return;
 
             try
             {
-                // Verify JavaScript map object is actually ready
                 string mapCheck = await webViewMap.ExecuteScriptAsync("isMapReady()");
                 if (mapCheck != "true")
                 {
@@ -228,15 +314,13 @@ namespace SiJabarApp
 
                 string selectedFilter = comboFilterStatus.SelectedItem?.ToString() ?? "Semua Status";
 
-                // 1. LOAD MARKER MASTER TPS (BIRU)
-                var listMaster = collectionMaster.Find(_ => true).ToList();
+                var listMaster = await collectionMaster.Find(_ => true).ToListAsync();
                 foreach (var tps in listMaster)
                 {
                     double lat = tps.Latitude;
                     double lon = tps.Longitude;
                     if (lat == 0 || lon == 0) continue;
 
-                    // AUTO-REPAIR: Fix corrupted coordinates (decimal point lost due to locale bug)
                     if (Math.Abs(lat) > 90 || Math.Abs(lon) > 180)
                     {
                         bool repaired = RepairCoordinate(ref lat, ref lon);
@@ -250,7 +334,7 @@ namespace SiJabarApp
                                     Builders<MasterLokasiModel>.Filter.Eq(x => x.Id, tps.Id), update);
                             } catch { }
                         }
-                        else continue; // Can't repair, skip this record
+                        else continue;
                     }
 
                     string latStr = lat.ToString(CultureInfo.InvariantCulture);
@@ -260,16 +344,17 @@ namespace SiJabarApp
                     await webViewMap.ExecuteScriptAsync(script);
                 }
 
-                // 2. LOAD MARKER LAPORAN SAMPAH
                 var builder = Builders<SampahModel>.Filter;
                 var filter = builder.Empty;
 
                 if (selectedFilter != "Semua Status")
                 {
-                    filter = builder.Eq(x => x.Status, selectedFilter);
+                    string statusValue = selectedFilter;
+                    
+                    filter = builder.Eq(x => x.Status, statusValue);
                 }
 
-                var listSampah = collectionSampah.Find(filter).ToList();
+                var listSampah = await collectionSampah.Find(filter).ToListAsync();
 
                 foreach (var item in listSampah)
                 {
@@ -277,7 +362,6 @@ namespace SiJabarApp
                     double lon = item.Longitude;
                     if (lat == 0 || lon == 0) continue;
 
-                    // AUTO-REPAIR for Sampah records too
                     if (Math.Abs(lat) > 90 || Math.Abs(lon) > 180)
                     {
                         bool repaired = RepairCoordinate(ref lat, ref lon);
@@ -299,7 +383,7 @@ namespace SiJabarApp
                     string lonStr = lon.ToString(CultureInfo.InvariantCulture);
                     string judul = CleanText(item.Wilayah);
                     string tgl = item.Tanggal.ToString("dd MMM");
-                    string desc = CleanText($"{item.Jenis} ({item.Berat} Kg)<br>Status: {item.Status}<br>Tgl: {tgl}");
+                    string desc = CleanText($"{item.Jenis} ({item.Berat} Kg)<br>Status: {item.Status}<br>Tanggal: {tgl}");
 
                     string color = "#e74c3c";
                     if (item.Status == "Selesai") color = "#2ecc71";
@@ -308,41 +392,40 @@ namespace SiJabarApp
                     string script = $"addMarker({latStr}, {lonStr}, '{judul}', '{desc}', '{color}', 1000)";
                     await webViewMap.ExecuteScriptAsync(script);
                 }
+
+                var mongoHelper = new MongoHelper();
+                var listUsers = await mongoHelper.GetAllUsersAsync();
+                foreach (var user in listUsers)
+                {
+                    if (string.Equals(_userRole, "Masyarakat", StringComparison.OrdinalIgnoreCase) && 
+                        string.Equals(user.Role, "Admin", StringComparison.OrdinalIgnoreCase)) continue;
+
+                    double lat = user.Latitude;
+                    double lon = user.Longitude;
+
+                    if (Math.Abs(lat) > 90 || Math.Abs(lon) > 180)
+                    {
+                        if (!RepairCoordinate(ref lat, ref lon)) continue;
+                    }
+
+                    string color = "gray"; 
+                    string role = user.Role;
+                    if (role == "Admin") color = "admin";
+                    else if (role == "Petugas") color = "petugas";
+                    else if (role == "Masyarakat") color = "masyarakat";
+
+                    string judul = CleanText(user.Fullname);
+                    string desc = $"Role: {role}";
+                    string script = $"addMarker({lat.ToString(CultureInfo.InvariantCulture)}, {lon.ToString(CultureInfo.InvariantCulture)}, '{judul}', '{desc}', '{color}', 500)";
+                    await webViewMap.ExecuteScriptAsync(script);
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Gagal memuat marker: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("Failed to load markers: " + ex.Message);
             }
         }
 
-        // Auto-repair coordinates corrupted by locale bug (decimal point stripped)
-        // Example: -6.905... was saved as -69053... (dot treated as thousands separator)
-        private bool RepairCoordinate(ref double lat, ref double lon)
-        {
-            bool latOk = Math.Abs(lat) <= 90;
-            bool lonOk = Math.Abs(lon) <= 180;
-
-            if (!latOk)
-            {
-                // Try dividing by powers of 10 until we get valid Indonesia latitude (-11 to 6)
-                for (int p = 1; p <= 16; p++)
-                {
-                    double tryLat = lat / Math.Pow(10, p);
-                    if (tryLat >= -11 && tryLat <= 6) { lat = tryLat; latOk = true; break; }
-                }
-            }
-
-            if (!lonOk)
-            {
-                // Try dividing by powers of 10 until we get valid Indonesia longitude (95 to 141)
-                for (int p = 1; p <= 16; p++)
-                {
-                    double tryLon = lon / Math.Pow(10, p);
-                    if (tryLon >= 95 && tryLon <= 141) { lon = tryLon; lonOk = true; break; }
-                }
-            }
-
-            return latOk && lonOk;
-        }
+        private bool RepairCoordinate(ref double lat, ref double lon) => StyleHelper.RepairCoordinate(ref lat, ref lon);
     }
 }

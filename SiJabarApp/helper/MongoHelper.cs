@@ -1,34 +1,29 @@
-﻿using Microsoft.VisualBasic.ApplicationServices;
-using MongoDB.Driver;
-using Org.BouncyCastle.Crypto.Generators;
+﻿using MongoDB.Driver;
 using SiJabarApp.model;
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SiJabarApp.helper
 {
     public class MongoHelper
     {
         private IMongoCollection<model.User> usersCollection;
-        // String koneksi MongoDB Atlas Anda
-        // private readonly string connectionString = "mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB";
-        // private readonly string connectionString = "mongodb://localhost:27017";
-        private readonly string connectionString = "mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB";
-        private readonly string databaseName = "SiJabarDB";
+        public const string ConnectionString = "mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB";
+        public const string DatabaseName = "SiJabarDB";
 
         public MongoHelper()
         {
             try
             {
-                // Inisialisasi client dengan koneksi Atlas
-                var client = new MongoClient(connectionString);
-                var database = client.GetDatabase(databaseName);
+                var client = new MongoClient(ConnectionString);
+                var database = client.GetDatabase(DatabaseName);
                 usersCollection = database.GetCollection<model.User>("Users");
             }
             catch (Exception ex)
             {
-                // Log error jika inisialisasi gagal
-                System.Diagnostics.Debug.WriteLine("Gagal inisialisasi MongoDB Atlas: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("Database initialization failed: " + ex.Message);
             }
         }
 
@@ -36,50 +31,40 @@ namespace SiJabarApp.helper
         {
             try
             {
-                // 1. Standarisasi Email ke Huruf Kecil
                 string cleanEmail = email.Trim().ToLower();
-
-                // 2. CEK APAKAH EMAIL SUDAH ADA
                 var existingUser = usersCollection.Find(u => u.Email == cleanEmail).FirstOrDefault();
 
                 if (existingUser != null)
                 {
-                    message = "Email sudah terdaftar! Silakan gunakan email lain.";
+                    message = "Email already registered.";
                     return false;
                 }
 
-                // 3. Hash Password menggunakan BCrypt
                 string passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
-
-                // 4. Simpan User Baru
                 var newUser = new model.User
                 {
                     Fullname = name,
                     Email = cleanEmail,
                     Password = passwordHash,
-
-                    // --- UPDATE PENTING DI SINI ---
-                    // Setiap user yang daftar lewat form otomatis jadi "Masyarakat"
                     Role = "Masyarakat"
                 };
 
                 usersCollection.InsertOne(newUser);
-                message = "Registrasi Berhasil! Silakan Login.";
+                message = "Registration successful.";
                 return true;
             }
             catch (Exception ex)
             {
-                message = "Gagal terhubung ke Database Atlas! Error: " + ex.Message;
+                message = "Database connection error: " + ex.Message;
                 return false;
             }
         }
 
-        // --- UPDATE PENTING DI SIGNATURE: Tambah 'out string role' ---
         public bool LoginUser(string email, string password, out string message, out string userName, out string userId, out string role)
         {
             userName = "";
             userId = "";
-            role = ""; // Default kosong
+            role = "";
 
             try
             {
@@ -88,36 +73,82 @@ namespace SiJabarApp.helper
 
                 if (user == null)
                 {
-                    message = "Email tidak ditemukan!";
+                    message = "Email not found.";
                     return false;
                 }
 
-                // Verifikasi password yang di-hash
                 bool validPassword = BCrypt.Net.BCrypt.Verify(password, user.Password);
-
                 if (validPassword)
                 {
                     userName = user.Fullname;
                     userId = user.Id;
-
-                    // --- UPDATE PENTING DI SINI ---
-                    // Ambil Role dari database untuk dikirim ke FormAuth/MainForm
                     role = user.Role;
-
-                    message = "Login Berhasil!";
+                    message = "Login successful.";
                     return true;
                 }
                 else
                 {
-                    message = "Password Salah!";
+                    message = "Invalid password.";
                     return false;
                 }
             }
             catch (Exception ex)
             {
-                message = "Gagal Login. Error: " + ex.Message;
+                message = "Login failed: " + ex.Message;
                 return false;
             }
+        }
+
+        public bool UpdateUserLocation(string userId, double lat, double lon)
+        {
+            try
+            {
+                if (usersCollection == null) return false;
+                var filter = Builders<model.User>.Filter.Eq(u => u.Id, userId);
+                var update = Builders<model.User>.Update
+                    .Set(u => u.Latitude, lat)
+                    .Set(u => u.Longitude, lon);
+                
+                var result = usersCollection.UpdateOne(filter, update);
+                return result.ModifiedCount > 0;
+            }
+            catch { return false; }
+        }
+
+        public async Task<bool> UpdateUserLocationAsync(string userId, double lat, double lon)
+        {
+            try
+            {
+                if (usersCollection == null) return false;
+                var filter = Builders<model.User>.Filter.Eq(u => u.Id, userId);
+                var update = Builders<model.User>.Update
+                    .Set(u => u.Latitude, lat)
+                    .Set(u => u.Longitude, lon);
+
+                var result = await usersCollection.UpdateOneAsync(filter, update);
+                return result.ModifiedCount > 0;
+            }
+            catch { return false; }
+        }
+
+        public List<model.User> GetAllUsers()
+        {
+            try
+            {
+                if (usersCollection == null) return new List<model.User>();
+                return usersCollection.Find(u => u.Latitude != 0 && u.Longitude != 0).ToList();
+            }
+            catch { return new List<model.User>(); }
+        }
+
+        public async Task<List<model.User>> GetAllUsersAsync()
+        {
+            try
+            {
+                if (usersCollection == null) return new List<model.User>();
+                return await usersCollection.Find(u => u.Latitude != 0 && u.Longitude != 0).ToListAsync();
+            }
+            catch { return new List<model.User>(); }
         }
     }
 }

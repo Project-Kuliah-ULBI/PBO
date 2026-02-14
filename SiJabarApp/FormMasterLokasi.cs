@@ -56,9 +56,8 @@ namespace SiJabarApp
         {
             try
             {
-                // var client = new MongoClient("mongodb://localhost:27017");
-                var client = new MongoClient("mongodb+srv://root:root123@sijabardb.ak2nw4q.mongodb.net/?appName=SiJabarDB");
-                var db = client.GetDatabase("SiJabarDB");
+                var client = new MongoClient(MongoHelper.ConnectionString);
+                var db = client.GetDatabase(MongoHelper.DatabaseName);
                 collectionMaster = db.GetCollection<MasterLokasiModel>("MasterLokasi");
             }
             catch (Exception ex) { MessageBox.Show("Error DB: " + ex.Message); }
@@ -249,18 +248,35 @@ namespace SiJabarApp
         {
             webView = new WebView2 { Dock = DockStyle.Fill };
             panelMap.Controls.Add(webView);
-            await webView.EnsureCoreWebView2Async();
 
-            string htmlPath = Path.Combine(Directory.GetCurrentDirectory(), "map.html");
-            if (File.Exists(htmlPath))
+            int maxRetries = 3;
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                // Revert to file-based loading but construct URI properly
-                // This gives correct origin/context for map tiles to load
-                var fileUri = new Uri(htmlPath).AbsoluteUri + "?v=" + DateTime.Now.Ticks;
-                webView.Source = new Uri(fileUri);
-                
-                webView.NavigationCompleted += WebView_NavigationCompleted;
-                webView.WebMessageReceived += WebView_WebMessageReceived;
+                try
+                {
+                    var userDataFolder = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "SiJabarApp", "WebView2", "MasterLokasi");
+                    var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+                    await webView.EnsureCoreWebView2Async(env);
+
+                    string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "map.html");
+                    if (File.Exists(htmlPath))
+                    {
+                        var fileUri = new Uri(htmlPath).AbsoluteUri + "?v=" + DateTime.Now.Ticks;
+                        webView.Source = new Uri(fileUri);
+                        webView.NavigationCompleted += WebView_NavigationCompleted;
+                        webView.WebMessageReceived += WebView_WebMessageReceived;
+                    }
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    if (attempt < maxRetries)
+                        await Task.Delay(1000);
+                    else
+                        MessageBox.Show("Failed to initialize Map: " + ex.Message);
+                }
             }
         }
 

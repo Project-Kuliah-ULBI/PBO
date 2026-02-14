@@ -3,7 +3,6 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using System.Text.RegularExpressions;
 using MongoDB.Driver;
 using SiJabarApp.helper;
 
@@ -11,7 +10,6 @@ namespace SiJabarApp
 {
     public partial class FormAuth : Form
     {
-        // --- DLL IMPORT (Drag Window) ---
         public const int WM_NCLBUTTONDOWN = 0xA1;
         public const int HT_CAPTION = 0x2;
         [DllImport("user32.dll")]
@@ -19,34 +17,28 @@ namespace SiJabarApp
         [DllImport("user32.dll")]
         public static extern bool ReleaseCapture();
 
-        // --- VARIABEL UI UTAMA ---
         private Panel panelLogin;
         private Panel panelRegister;
         private Panel panelOverlay;
         private Button btnClose;
         private Button btnMinimize;
 
-        // --- VARIABEL INPUT & DATABASE --- 
         private TextBox txtRegName, txtRegEmail, txtRegPass;
         private TextBox txtLogEmail, txtLogPass;
         private MongoHelper dbHelper;
 
-        // --- VARIABEL OVERLAY ---
         private Label lblOverlayTitle;
         private Label lblOverlayDesc;
         private Button btnOverlayAction;
 
-        // --- LOGIKA ANIMASI ---
         private System.Windows.Forms.Timer animationTimer;
         private bool isShowRegister = false;
         private int slideSpeed = 50;
 
-        // --- TEMA WARNA HIJAU (EMERALD GREEN via StyleHelper) ---
         private Color primaryColor = StyleHelper.PrimaryColor;
         private Color secondaryColor = StyleHelper.SecondaryColor;
         private Color inputBgColor = Color.FromArgb(240, 240, 240);
 
-        // --- UKURAN FORM BESAR ---
         private int panelWidth = 500;
         private int formHeight = 650;
 
@@ -54,19 +46,14 @@ namespace SiJabarApp
         {
             InitializeComponent();
 
-            // PAKSA UKURAN BESAR & SETUP FORM
             this.ClientSize = new Size(panelWidth * 2, formHeight);
             this.FormBorderStyle = FormBorderStyle.None;
             this.StartPosition = FormStartPosition.CenterScreen;
             this.DoubleBuffered = true;
-            this.Text = "SiJabar App";
+            this.Text = "Aplikasi SiJabar";
             this.BackColor = Color.White;
 
-            try
-            {
-                dbHelper = new MongoHelper();
-            }
-            catch { }
+            try { dbHelper = new MongoHelper(); } catch { }
 
             SetupUI();
             this.MouseDown += Form_MouseDown;
@@ -83,17 +70,14 @@ namespace SiJabarApp
 
         private void SetupUI()
         {
-            // Panel Register (Kanan Awalnya)
-            panelRegister = CreateFormPanel("Buat Akun", "Gunakan email untuk pendaftaran", "DAFTAR", true);
+            panelRegister = CreateFormPanel("Buat Akun", "Gunakan email Anda untuk mendaftar", "DAFTAR", true);
             panelRegister.Location = new Point(panelWidth, 0);
             this.Controls.Add(panelRegister);
 
-            // Panel Login (Kiri Awalnya)
-            panelLogin = CreateFormPanel("Masuk", "atau gunakan akun anda", "MASUK", false);
+            panelLogin = CreateFormPanel("Masuk", "atau gunakan akun Anda", "MASUK", false);
             panelLogin.Location = new Point(0, 0);
             this.Controls.Add(panelLogin);
 
-            // Panel Overlay (Penutup Geser)
             panelOverlay = new Panel
             {
                 Size = new Size(panelWidth, formHeight),
@@ -196,7 +180,7 @@ namespace SiJabarApp
 
             lblOverlayDesc = new Label
             {
-                Text = "Masukkan detail pribadi Anda dan mulailah perjalanan bersama kami",
+                Text = "Masukkan detail pribadi Anda dan mulai perjalanan bersama kami",
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 14),
                 AutoSize = false,
@@ -317,7 +301,6 @@ namespace SiJabarApp
             return p;
         }
 
-        // --- AKSI REGISTER ---
         private void BtnActionRegister_Click(object sender, EventArgs e)
         {
             if (dbHelper == null) dbHelper = new MongoHelper();
@@ -326,7 +309,7 @@ namespace SiJabarApp
                 string.IsNullOrWhiteSpace(txtRegEmail.Text) || txtRegEmail.Text == "Email" ||
                 string.IsNullOrWhiteSpace(txtRegPass.Text) || txtRegPass.Text == "Password")
             {
-                MessageBox.Show("Mohon lengkapi semua data!", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Harap lengkapi semua field!", "Peringatan", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -337,39 +320,31 @@ namespace SiJabarApp
 
             if (success)
             {
-                MessageBox.Show(msg, "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                // Auto switch ke Login view
+                MessageBox.Show(msg, "Berhasil", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 animationTimer.Start();
-                // Reset form
                 txtRegName.Text = "Nama"; txtRegName.ForeColor = Color.Gray;
                 txtRegEmail.Text = "Email"; txtRegEmail.ForeColor = Color.Gray;
                 txtRegPass.Text = "Password"; txtRegPass.ForeColor = Color.Gray; txtRegPass.UseSystemPasswordChar = false;
             }
             else
             {
-                MessageBox.Show(msg, "Gagal Registrasi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(msg, "Pendaftaran Gagal", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        // --- AKSI LOGIN (PENTING!) ---
         private void BtnActionLogin_Click(object sender, EventArgs e)
         {
             if (dbHelper == null) dbHelper = new MongoHelper();
 
             string msg, username, userId, role;
-
-            // Memanggil Helper: Mengirim Email & Pass, Menerima Msg, Username, UserId, Role
             bool success = dbHelper.LoginUser(txtLogEmail.Text, txtLogPass.Text, out msg, out username, out userId, out role);
 
             if (success)
             {
-                MessageBox.Show($"Selamat Datang, {username}!", "Login Sukses");
-
-                // BUKA DASHBOARD UTAMA (MENGIRIM 3 PARAMETER)
+                MessageBox.Show($"Selamat Datang, {username}!", "Login Berhasil");
                 MainForm dashboard = new MainForm(userId, username, role);
                 dashboard.Show();
-
-                this.Hide(); // Sembunyikan form auth
+                this.Hide();
             }
             else
             {
@@ -402,7 +377,6 @@ namespace SiJabarApp
 
             tb.Location = new Point(20, (inputHeight - tb.Height) / 2);
 
-            // Logic Placeholder
             tb.Enter += (s, e) => {
                 if (tb.Text == placeholder)
                 {
@@ -461,15 +435,15 @@ namespace SiJabarApp
             if (isShowRegister)
             {
                 lblOverlayTitle.Font = new Font("Georgia", 24, FontStyle.Bold);
-                lblOverlayTitle.Text = "Selamat Datang!";
-                lblOverlayDesc.Text = "Untuk tetap terhubung, silakan login info pribadi Anda";
+                lblOverlayTitle.Text = "Selamat Datang Kembali!";
+                lblOverlayDesc.Text = "Tetap terhubung dengan kami, silakan login dengan data Anda";
                 btnOverlayAction.Text = "MASUK";
             }
             else
             {
                 lblOverlayTitle.Font = new Font("Georgia", 32, FontStyle.Bold);
                 lblOverlayTitle.Text = "Halo, Teman!";
-                lblOverlayDesc.Text = "Masukkan detail pribadi Anda dan mulailah perjalanan bersama kami";
+                lblOverlayDesc.Text = "Masukkan detail pribadi Anda dan mulai perjalanan bersama kami";
                 btnOverlayAction.Text = "DAFTAR";
             }
         }

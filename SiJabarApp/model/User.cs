@@ -21,5 +21,11 @@ namespace SiJabarApp.model
         // --- TAMBAHAN WAJIB (AGAR BISA MULTI-ROLE) ---
         [BsonElement("Role")]
         public string Role { get; set; }
+
+        [BsonElement("Latitude")]
+        public double Latitude { get; set; }
+
+        [BsonElement("Longitude")]
+        public double Longitude { get; set; }
     }
 }
